@@ -1,0 +1,14 @@
+[
+  {
+    "_id": "6a392d6da9d1b3531afb1beb",
+    "name": "John",
+    "email": "john@example.com",
+    "password": "$2b$12$KDK.0RKa8NoCE/QqFZTUpuBRO1yigI9/AY/BY5i.xU35KrGhGcgvq"
+  },
+  {
+    "_id": "6a3930325b560a46961f460e",
+    "name": "TestUser",
+    "email": "test@example.com",
+    "password": "$2b$12$htqbnlfVI26gyRlG4G1wyOTI5XGsICHMKhuKo/AZSebVZCaZYGdve"
+  }
+]

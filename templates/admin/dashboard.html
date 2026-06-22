@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - LMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">LMS Admin</h1>
+            <div class="flex items-center gap-4">
+                <span class="text-gray-600">Welcome, {{ admin.username }}</span>
+                <a href="/logout" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm hover:bg-red-600 transition">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6">Dashboard</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-gray-500 text-sm font-medium">Total Students</h3>
+                <p class="text-3xl font-bold text-gray-800 mt-2">{{ total_students }}</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-gray-500 text-sm font-medium">Total Courses</h3>
+                <p class="text-3xl font-bold text-gray-800 mt-2">{{ total_courses }}</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-gray-500 text-sm font-medium">Upcoming Exams</h3>
+                <p class="text-3xl font-bold text-gray-800 mt-2">{{ upcoming_exams|length }}</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-gray-500 text-sm font-medium">Recent Logins</h3>
+                <p class="text-3xl font-bold text-gray-800 mt-2">0</p>
+            </div>
+        </div>
+
+        {% if upcoming_exams %}
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Upcoming Exams</h3>
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="border-b">
+                        <th class="py-2 text-gray-600">Title</th>
+                        <th class="py-2 text-gray-600">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exam in upcoming_exams %}
+                    <tr class="border-b">
+                        <td class="py-2">{{ exam.title }}</td>
+                        <td class="py-2">{{ exam.exam_date }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </main>
+</body>
+</html>

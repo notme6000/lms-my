@@ -1,0 +1,17 @@
+[
+  {
+    "_id": "6a392d6da9d1b3531afb1be8",
+    "title": "Python Basics",
+    "description": "Introduction to Python programming"
+  },
+  {
+    "_id": "6a392d6da9d1b3531afb1be9",
+    "title": "Linux Fundamentals",
+    "description": "Basic Linux commands and concepts"
+  },
+  {
+    "_id": "6a392d6da9d1b3531afb1bea",
+    "title": "Web Security",
+    "description": "Web application security fundamentals"
+  }
+]
