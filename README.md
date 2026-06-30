@@ -1,6 +1,6 @@
-# LMS — Learning Management System (Phase 1 MVP)
+# LMS — Learning Management System
 
-A server-rendered Learning Management System built with **FastAPI + MongoDB + Jinja2 + Tailwind CSS**. Two dashboards (admin and student) with session-based authentication.
+A server-rendered Learning Management System built with **FastAPI + MongoDB + Jinja2 + Tailwind CSS**. Admin and student dashboards with session-based authentication.
 
 ---
 
@@ -26,26 +26,38 @@ A server-rendered Learning Management System built with **FastAPI + MongoDB + Ji
 ```
 lms/
 ├── app/
-│   ├── main.py            # App entry point, routes (/, /login, /register, /logout)
+│   ├── main.py            # App entry point, global routes (/, /login, /logout, /change-password)
 │   ├── database.py        # MongoDB connection + auto-seed on startup
 │   ├── models.py          # Pydantic models (Admin, Student, Course, Enrollment, Exam)
 │   ├── auth.py            # FastAPI dependencies for role-based access control
 │   └── routes/
-│       ├── admin.py       # Admin router (GET /admin/dashboard)
-│       └── student.py     # Student router (GET /student/dashboard)
+│       ├── admin.py       # Admin router — students, courses, exams, assessments, projects
+│       └── student.py     # Student router — dashboard, exams, assessments, projects
 ├── templates/
 │   ├── login.html         # Unified login page
-│   ├── register.html      # Student registration page
+│   ├── change_password.html # Password change page (forced on first login)
 │   ├── admin/
-│   │   └── dashboard.html # Admin dashboard
+│   │   ├── dashboard.html
+│   │   ├── students.html
+│   │   ├── create_student.html
+│   │   ├── student_detail.html  # Per-student management (assessments, projects)
+│   │   ├── reset_password.html
+│   │   ├── courses.html
+│   │   ├── course_form.html
+│   │   ├── exams.html
+│   │   ├── exam_form.html
+│   │   └── exam_results.html
 │   └── student/
-│       └── dashboard.html # Student dashboard
+│       ├── dashboard.html
+│       ├── exams.html
+│       ├── exam_take.html
+│       └── exam_result.html
 ├── scripts/
 │   ├── export_db.py       # Export all MongoDB collections to JSON
 │   └── import_db.py       # Import JSON files back into MongoDB
 ├── db_export/             # MongoDB data snapshots (JSON)
 ├── instruction.md         # Original project specification
-└── requirements.txt       # Python dependencies
+└── requirements.txt       # Python dependencies (motor>=3.7, not 3.3.1)
 ```
 
 ---
@@ -73,7 +85,10 @@ MongoDB (local:27017 / lms_db)
        ├── students
        ├── courses
        ├── enrollments
-       └── exams
+       ├── exams
+       ├── assessments
+       ├── projects
+       └── exam_results
 ```
 
 Key points:
@@ -81,8 +96,8 @@ Key points:
 - **Async throughout**: FastAPI + Motor use Python async/await for all DB operations.
 - **Session-based auth**: Sessions stored in a signed cookie (itsdangerous). No JWT.
 - **Dependency injection**: FastAPI `Depends(get_admin_user)` / `Depends(get_student_user)` protects routes.
-- **Auto-seeding**: On first startup, if collections are empty, the app inserts demo data (1 admin, 3 courses, 1 student, 3 enrollments, 1 exam).
-- **Unified login**: A single `/login` endpoint checks admins collection first (by username), then students (by email).
+- **Auto-seeding**: On first startup, if collections are empty, the app inserts demo data.
+- **Unified login**: A single `/login` endpoint checks admins by username, then students by email.
 
 ---
 
@@ -95,12 +110,12 @@ Key points:
 
 ### `students`
 ```json
-{ "name": "John", "email": "john@example.com", "password": "<bcrypt hash>" }
+{ "student_id": "S0001", "name": "John", "email": "john@example.com", "password": "<bcrypt hash>", "must_change_password": false }
 ```
 
 ### `courses`
 ```json
-{ "title": "Python Basics", "description": "..." }
+{ "title": "Python Basics", "description": "Introduction to Python programming" }
 ```
 
 ### `enrollments`
@@ -110,52 +125,104 @@ Key points:
 
 ### `exams`
 ```json
-{ "course_id": "<ObjectId>", "title": "Python Quiz", "exam_date": "2026-06-25" }
+{ "title": "Python Quiz", "description": "...", "questions": [{"q": "2+2=?", "options": ["3","4","5","6"], "correct": 1}], "assigned_students": ["<ObjectId>"] }
 ```
+
+### `assessments`
+```json
+{ "student_id": "<ObjectId>", "course_id": "<ObjectId>", "heading": "Midterm", "description": "...", "total_marks": 100, "marks_obtained": 85 }
+```
+
+### `projects`
+```json
+{ "student_id": "<ObjectId>", "course_id": "<ObjectId>", "heading": "Final Project", "description": "...", "total_marks": 50, "marks_obtained": 42 }
+```
+
+### `exam_results`
+```json
+{ "exam_id": "<ObjectId>", "student_id": "<ObjectId>", "score": 2, "total": 3 }
+```
+
+---
+
+## Routes
+
+### Global (`app/main.py`)
+| Route | Method | Description |
+|---|---|---|
+| `/` | GET | Redirect to `/login` |
+| `/login` | GET/POST | Login page + credential check (admin by username, student by email) |
+| `/logout` | GET | Clear session, redirect to `/login` |
+| `/change-password` | GET/POST | Change password (forced on first login for new students) |
+
+### Admin (`app/routes/admin.py`) — prefix `/admin`
+| Route | Method | Description |
+|---|---|---|
+| `/dashboard` | GET | Aggregate stats + links to management |
+| `/students` | GET | List / search students |
+| `/students/create` | GET/POST | Create student with auto-generated ID, password, course enrollment |
+| `/students/{id}` | GET | Student detail — view/add assessments and projects, reset password |
+| `/students/{id}/delete` | POST | Delete student + enrollments + assessments + projects |
+| `/students/{id}/reset-password` | POST | Generate new password, force change on next login |
+| `/students/{id}/assessments` | POST | Add assessment |
+| `/students/{id}/assessments/{aid}/delete` | POST | Delete assessment |
+| `/students/{id}/projects` | POST | Add project |
+| `/students/{id}/projects/{pid}/delete` | POST | Delete project |
+| `/courses` | GET | List courses |
+| `/courses/create` | GET/POST | Add course |
+| `/courses/{id}/edit` | GET/POST | Edit course |
+| `/courses/{id}/delete` | POST | Delete course + associated records |
+| `/exams` | GET | List exams |
+| `/exams/create` | GET/POST | Create exam with dynamic questions + student assignment |
+| `/exams/{id}/edit` | GET/POST | Edit exam |
+| `/exams/{id}/delete` | POST | Delete exam + results |
+| `/exams/{id}/results` | GET | View student results and scores |
+
+### Student (`app/routes/student.py`) — prefix `/student`
+| Route | Method | Description |
+|---|---|---|
+| `/dashboard` | GET | Courses, assessments, projects, progress bars, notifications |
+| `/exams` | GET | List assigned exams with taken/not-taken status |
+| `/exams/{id}` | GET/POST | Take exam (questions with 4 options) and submit auto-graded answers |
+| `/exams/{id}/result` | GET | View score and percentage |
 
 ---
 
 ## Data Flow
 
-### Registration (`/register`)
-1. `GET /register` → renders `register.html`
-2. `POST /register` → validates fields (required, password match, min length, unique email) → bcrypt hash → insert into `students` → success message
-
 ### Login (`/login`)
 1. `GET /login` → renders `login.html`
 2. `POST /login` → check `admins` by username → bcrypt verify → session `{username, role:"admin"}` → redirect to `/admin/dashboard`
-3. If no admin match → check `students` by email → bcrypt verify → session `{id, name, role:"student"}` → redirect to `/student/dashboard`
+3. If no admin match → check `students` by email → bcrypt verify → session `{id, name, role:"student", must_change_password}` → if `must_change_password` is true, redirect to `/change-password`; otherwise `/student/dashboard`
 4. Neither matches → re-render login with error
 
-### Admin Dashboard (`/admin/dashboard`)
-1. `get_admin_user` dependency checks session for `role == "admin"` (else redirect to `/login`)
-2. Query MongoDB: count students, count courses, find exams (limit 10)
-3. Render `admin/dashboard.html` with stats + exam table
+### Student Creation (admin)
+1. Admin fills name, email, selects courses → submit
+2. System generates sequential student ID (`S0001`, `S0002`, ...) + random password
+3. Student doc created with `must_change_password: true` + enrollments inserted
+4. Admin shares credentials with student
 
-### Student Dashboard (`/student/dashboard`)
-1. `get_student_user` dependency checks session for `role == "student"` (else redirect to `/login`)
-2. Find enrollments by `student_id`
-3. For each enrollment, look up course title and progress
-4. Find exams matching enrolled courses
-5. Render `student/dashboard.html` with courses, progress bars, exams, notifications
-
-### Logout (`/logout`)
-1. Clear session → redirect to `/login`
+### Exam Flow
+1. Admin creates exam with questions (4 options per question, marks correct answer)
+2. Admin assigns exam to specific students
+3. Student sees exam in `/student/exams`, clicks "Take Exam"
+4. Student answers questions, submits
+5. System auto-grades, stores result in `exam_results`
+6. Student views score, admin views all results
 
 ---
 
-## Key Files Explained
+## Running the App
 
-| File | Purpose |
-|---|---|
-| `app/main.py` | FastAPI app creation, session middleware, Jinja2 setup, startup event (DB connect + seed), global routes |
-| `app/database.py` | `Database` class: connects to MongoDB, auto-seeds demo data if empty; singleton instance |
-| `app/models.py` | Pydantic schemas for type validation (not used for DB ops) |
-| `app/auth.py` | `get_admin_user(request)` and `get_student_user(request)` — FastAPI dependencies that guard routes |
-| `app/routes/admin.py` | `APIRouter(prefix="/admin")` — dashboard route that queries aggregate stats |
-| `app/routes/student.py` | `APIRouter(prefix="/student")` — dashboard route that queries per-student data |
-| `scripts/export_db.py` | Connects to MongoDB, serializes all collections to `db_export/*.json` |
-| `scripts/import_db.py` | Reads JSON from `db_export/`, deserializes ObjectIds, drops and repopulates MongoDB |
+```bash
+# Ensure MongoDB is running on localhost:27017
+cd /home/akira/projects/lms
+env/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Demo credentials** (auto-seeded):
+- **Admin**: username `admin`, password `admin123`
+- **Student**: email `john@example.com`, password `student123`
 
 ---
 
@@ -165,31 +232,8 @@ Key points:
 - **Dependency injection for auth**: Route protection is handled via `Depends(get_admin_user)`, idiomatic FastAPI.
 - **Singleton database**: `database.py` creates a module-level `Database()` instance, imported by routes.
 - **No ORM/ODM**: Raw MongoDB queries via Motor (find, find_one, insert_one, count_documents). Pydantic models exist but are not used for DB I/O.
-- **Minimal frontend**: Tailwind CSS via CDN, no build step, no JS framework. Progress bars use inline styles.
+- **Minimal frontend**: Tailwind CSS via CDN, no build step, no JS framework.
 - **Environment config**: Only `SECRET_KEY` env var (session signing), with a hardcoded fallback. DB host/port hardcoded to `localhost:27017`.
-
----
-
-## Running the App
-
-```bash
-pip install -r requirements.txt
-# Ensure MongoDB is running on localhost:27017
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-**Demo credentials** (auto-seeded):
-- **Admin**: username `admin`, password `admin123`
-- **Student**: email `john@example.com`, password `student123`
-
----
-
-## Phase 1 Scope
-
-This is a Phase 1 MVP with the minimum feature set:
-- Admin and student login/logout
-- Student self-registration
-- Admin dashboard (aggregate stats + upcoming exams)
-- Student dashboard (enrolled courses, progress bars, upcoming exams, notifications)
-
-Future phases would add CRUD for courses/exams, lesson content, grading, and more.
+- **Student IDs**: Auto-generated sequential IDs (`S0001`, `S0002`, ...).
+- **Delete cascades**: Deleting a student removes their enrollments, assessments, projects, and exam results.
+- **No self-registration**: Only admins can create student accounts.
