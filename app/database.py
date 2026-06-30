@@ -26,6 +26,7 @@ class Database:
         if await self.db.students.count_documents({}) == 0:
             hashed = bcrypt.hashpw(b"student123", bcrypt.gensalt()).decode()
             student = await self.db.students.insert_one({
+                "student_id": "S0001",
                 "name": "John", "email": "john@example.com", "password": hashed,
             })
             courses = await self.db.courses.find().to_list(length=None)

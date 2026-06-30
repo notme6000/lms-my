@@ -18,7 +18,7 @@
     </nav>
 
     <main class="max-w-7xl mx-auto px-4 py-8">
-        <div class="mb-6 flex items-center justify-between">
+        <div class="mb-6 flex items-center justify-between flex-wrap gap-4">
             <div class="flex items-center gap-4">
                 <a href="/admin/dashboard" class="text-blue-600 hover:underline">&larr; Dashboard</a>
                 <h2 class="text-2xl font-semibold text-gray-800">Students</h2>
@@ -29,19 +29,29 @@
             </a>
         </div>
 
+        <form method="GET" action="/admin/students" class="mb-4">
+            <input type="text" name="q" value="{{ q }}" placeholder="Search by name, email, or student ID..."
+                class="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </form>
+
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <table class="w-full text-left">
                 <thead>
                     <tr class="border-b bg-gray-50">
+                        <th class="py-3 px-4 text-gray-600 font-medium">Student ID</th>
                         <th class="py-3 px-4 text-gray-600 font-medium">Name</th>
                         <th class="py-3 px-4 text-gray-600 font-medium">Email</th>
                         <th class="py-3 px-4 text-gray-600 font-medium">Status</th>
+                        <th class="py-3 px-4 text-gray-600 font-medium">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for s in students %}
-                    <tr class="border-b">
-                        <td class="py-3 px-4">{{ s.name }}</td>
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="py-3 px-4 font-mono text-sm">{{ s.student_id or '—' }}</td>
+                        <td class="py-3 px-4">
+                            <a href="/admin/students/{{ s._id }}" class="text-blue-600 hover:underline font-medium">{{ s.name }}</a>
+                        </td>
                         <td class="py-3 px-4">{{ s.email }}</td>
                         <td class="py-3 px-4">
                             {% if s.must_change_password %}
@@ -50,10 +60,28 @@
                             <span class="text-green-600 text-sm">Active</span>
                             {% endif %}
                         </td>
+                        <td class="py-3 px-4">
+                            <div class="flex gap-2">
+                                <a href="/admin/students/{{ s._id }}"
+                                    class="bg-indigo-500 text-white px-3 py-1 rounded text-xs hover:bg-indigo-600 transition">Manage</a>
+                                <form method="POST" action="/admin/students/{{ s._id }}/reset-password" style="display:inline">
+                                    <button type="submit"
+                                        class="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600 transition">Reset PW</button>
+                                </form>
+                                <form method="POST" action="/admin/students/{{ s._id }}/delete" style="display:inline"
+                                    onsubmit="return confirm('Delete {{ s.name }}? This cannot be undone.');">
+                                    <button type="submit"
+                                        class="bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600 transition">Delete</button>
+                                </form>
+                            </div>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            {% if not students %}
+            <p class="text-gray-500 text-center py-8">No students found.</p>
+            {% endif %}
         </div>
     </main>
 </body>

@@ -43,11 +43,27 @@ async def dashboard(
                 "date": exam.get("exam_date", ""),
             })
 
+    assessments = await database.db.assessments.find(
+        {"student_id": ObjectId(student_id)}
+    ).to_list(length=100)
+    for a in assessments:
+        course = await database.db.courses.find_one({"_id": a["course_id"]})
+        a["course_title"] = course["title"] if course else ""
+
+    projects = await database.db.projects.find(
+        {"student_id": ObjectId(student_id)}
+    ).to_list(length=100)
+    for p in projects:
+        course = await database.db.courses.find_one({"_id": p["course_id"]})
+        p["course_title"] = course["title"] if course else ""
+
     return templates.TemplateResponse("student/dashboard.html", {
         "request": request,
         "student": student_user,
         "courses": courses,
         "upcoming_exams": upcoming_exams,
+        "assessments": assessments,
+        "projects": projects,
         "notifications": [
             "New lesson uploaded",
             "Exam scheduled",
