@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Exams - LMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">LMS</h1>
+            <div class="flex items-center gap-4">
+                <span class="text-gray-600">Welcome, {{ student.name }}</span>
+                <a href="/logout" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm hover:bg-red-600 transition">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <div class="mb-6 flex items-center gap-4">
+            <a href="/student/dashboard" class="text-blue-600 hover:underline">&larr; Dashboard</a>
+            <h2 class="text-2xl font-semibold text-gray-800">My Exams</h2>
+        </div>
+
+        <div class="grid gap-4">
+            {% for e in exams %}
+            <div class="bg-white rounded-lg shadow p-6 flex justify-between items-center">
+                <div>
+                    <h3 class="font-semibold text-gray-800">{{ e.title }}</h3>
+                    {% if e.description %}
+                    <p class="text-sm text-gray-500">{{ e.description }}</p>
+                    {% endif %}
+                    <p class="text-xs text-gray-400 mt-1">{{ e.question_count }} questions</p>
+                </div>
+                <div>
+                    {% if e.taken %}
+                    <div class="text-right">
+                        <span class="text-sm {% if e.score and e.score / e.total >= 0.5 %}text-green-600{% else %}text-red-600{% endif %} font-medium">
+                            Score: {{ e.score }} / {{ e.total }}
+                        </span>
+                        <a href="/student/exams/{{ e._id }}/result"
+                            class="block text-center mt-1 bg-indigo-500 text-white px-4 py-1 rounded text-sm hover:bg-indigo-600 transition">View Result</a>
+                    </div>
+                    {% else %}
+                    <a href="/student/exams/{{ e._id }}"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition">Take Exam</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% if not exams %}
+        <p class="text-gray-500 text-center py-8">No exams assigned to you yet.</p>
+        {% endif %}
+    </main>
+</body>
+</html>

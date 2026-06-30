@@ -399,6 +399,198 @@ async def delete_course(
     await database.db.enrollments.delete_many({"course_id": oid})
     await database.db.assessments.delete_many({"course_id": oid})
     await database.db.projects.delete_many({"course_id": oid})
-    await database.db.exams.delete_many({"course_id": oid})
     await database.db.courses.delete_one({"_id": oid})
     return RedirectResponse(url="/admin/courses", status_code=303)
+
+
+@router.get("/exams", response_class=HTMLResponse)
+async def list_exams(
+    request: Request,
+    admin_user: dict = Depends(get_admin_user),
+):
+    exams = await database.db.exams.find().to_list(length=50)
+    for e in exams:
+        e["_id"] = str(e["_id"])
+        e["student_count"] = len(e.get("assigned_students", []))
+        e["question_count"] = len(e.get("questions", []))
+    return templates.TemplateResponse("admin/exams.html", {
+        "request": request,
+        "admin": admin_user,
+        "exams": exams,
+    })
+
+
+@router.get("/exams/create", response_class=HTMLResponse)
+async def create_exam_page(
+    request: Request,
+    admin_user: dict = Depends(get_admin_user),
+):
+    students = await database.db.students.find().to_list(length=100)
+    for s in students:
+        s["_id"] = str(s["_id"])
+        s.pop("password", None)
+    return templates.TemplateResponse("admin/exam_form.html", {
+        "request": request,
+        "admin": admin_user,
+        "exam": None,
+        "students": students,
+    })
+
+
+@router.post("/exams/create", response_class=HTMLResponse)
+async def create_exam(
+    request: Request,
+    admin_user: dict = Depends(get_admin_user),
+):
+    form = await request.form()
+    title = form.get("title", "").strip()
+    description = form.get("description", "").strip()
+    assigned = form.getlist("assigned_students")
+
+    questions = []
+    i = 0
+    while f"q_{i}" in form:
+        q_text = form.get(f"q_{i}", "").strip()
+        opts = [form.get(f"q_{i}_opt_{j}", "").strip() for j in range(4)]
+        correct = form.get(f"q_{i}_correct", "")
+        if q_text and all(opts) and correct:
+            questions.append({"q": q_text, "options": opts, "correct": int(correct)})
+        i += 1
+
+    students = await database.db.students.find().to_list(length=100)
+    for s in students:
+        s["_id"] = str(s["_id"])
+        s.pop("password", None)
+
+    if not title or not questions:
+        return templates.TemplateResponse(
+            "admin/exam_form.html",
+            {"request": request, "admin": admin_user, "exam": None, "students": students, "error": "Title and at least one question are required."},
+        )
+
+    await database.db.exams.insert_one({
+        "title": title,
+        "description": description,
+        "questions": questions,
+        "assigned_students": [ObjectId(s) for s in assigned],
+    })
+    return RedirectResponse(url="/admin/exams", status_code=303)
+
+
+@router.get("/exams/{eid}/edit", response_class=HTMLResponse)
+async def edit_exam_page(
+    request: Request,
+    eid: str,
+    admin_user: dict = Depends(get_admin_user),
+):
+    exam = await database.db.exams.find_one({"_id": ObjectId(eid)})
+    if not exam:
+        return RedirectResponse(url="/admin/exams", status_code=303)
+    exam["_id"] = str(exam["_id"])
+    assigned_ids = [str(s) for s in exam.get("assigned_students", [])]
+
+    students = await database.db.students.find().to_list(length=100)
+    for s in students:
+        s["_id"] = str(s["_id"])
+        s.pop("password", None)
+        s["assigned"] = str(s["_id"]) in assigned_ids
+
+    return templates.TemplateResponse("admin/exam_form.html", {
+        "request": request,
+        "admin": admin_user,
+        "exam": exam,
+        "students": students,
+    })
+
+
+@router.post("/exams/{eid}/edit", response_class=HTMLResponse)
+async def edit_exam(
+    request: Request,
+    eid: str,
+    admin_user: dict = Depends(get_admin_user),
+):
+    form = await request.form()
+    title = form.get("title", "").strip()
+    description = form.get("description", "").strip()
+    assigned = form.getlist("assigned_students")
+
+    questions = []
+    i = 0
+    while f"q_{i}" in form:
+        q_text = form.get(f"q_{i}", "").strip()
+        opts = [form.get(f"q_{i}_opt_{j}", "").strip() for j in range(4)]
+        correct = form.get(f"q_{i}_correct", "")
+        if q_text and all(opts) and correct:
+            questions.append({"q": q_text, "options": opts, "correct": int(correct)})
+        i += 1
+
+    students = await database.db.students.find().to_list(length=100)
+    for s in students:
+        s["_id"] = str(s["_id"])
+        s.pop("password", None)
+
+    if not title or not questions:
+        exam = await database.db.exams.find_one({"_id": ObjectId(eid)})
+        exam["_id"] = str(exam["_id"])
+        assigned_ids = [str(s) for s in exam.get("assigned_students", [])]
+        for s in students:
+            s["assigned"] = str(s["_id"]) in assigned_ids
+        return templates.TemplateResponse(
+            "admin/exam_form.html",
+            {"request": request, "admin": admin_user, "exam": exam, "students": students, "error": "Title and at least one question are required."},
+        )
+
+    await database.db.exams.update_one(
+        {"_id": ObjectId(eid)},
+        {"$set": {
+            "title": title,
+            "description": description,
+            "questions": questions,
+            "assigned_students": [ObjectId(s) for s in assigned],
+        }},
+    )
+    return RedirectResponse(url="/admin/exams", status_code=303)
+
+
+@router.post("/exams/{eid}/delete", response_class=HTMLResponse)
+async def delete_exam(
+    request: Request,
+    eid: str,
+    admin_user: dict = Depends(get_admin_user),
+):
+    oid = ObjectId(eid)
+    await database.db.exam_results.delete_many({"exam_id": oid})
+    await database.db.exams.delete_one({"_id": oid})
+    return RedirectResponse(url="/admin/exams", status_code=303)
+
+
+@router.get("/exams/{eid}/results", response_class=HTMLResponse)
+async def exam_results(
+    request: Request,
+    eid: str,
+    admin_user: dict = Depends(get_admin_user),
+):
+    exam = await database.db.exams.find_one({"_id": ObjectId(eid)})
+    if not exam:
+        return RedirectResponse(url="/admin/exams", status_code=303)
+
+    results = await database.db.exam_results.find({"exam_id": ObjectId(eid)}).to_list(length=100)
+    student_data = []
+    for r in results:
+        student = await database.db.students.find_one({"_id": r["student_id"]})
+        student_data.append({
+            "name": student["name"] if student else "Unknown",
+            "email": student["email"] if student else "",
+            "student_id": student.get("student_id", "") if student else "",
+            "score": r["score"],
+            "total": r["total"],
+            "submitted_at": r.get("submitted_at", ""),
+        })
+
+    return templates.TemplateResponse("admin/exam_results.html", {
+        "request": request,
+        "admin": admin_user,
+        "exam": {"_id": eid, "title": exam["title"]},
+        "results": student_data,
+        "question_count": len(exam.get("questions", [])),
+    })

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if exam %}Edit{% else %}Create{% endif %} Exam - LMS Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">LMS Admin</h1>
+            <div class="flex items-center gap-4">
+                <span class="text-gray-600">Welcome, {{ admin.username }}</span>
+                <a href="/logout" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm hover:bg-red-600 transition">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <div class="mb-6 flex items-center gap-4">
+            <a href="/admin/exams" class="text-blue-600 hover:underline">&larr; Exams</a>
+            <h2 class="text-2xl font-semibold text-gray-800">{% if exam %}Edit{% else %}Create{% endif %} Exam</h2>
+        </div>
+
+        {% if error %}
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{{ error }}</div>
+        {% endif %}
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <form method="POST" action="/admin/exams/{% if exam %}{{ exam._id }}/edit{% else %}create{% endif %}" id="examForm">
+                <div class="grid grid-cols-1 gap-4 max-w-lg mb-6">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="title">Exam Title</label>
+                        <input type="text" name="title" id="title" required value="{{ exam.title or '' }}"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2" for="description">Description</label>
+                        <textarea name="description" id="description" rows="2"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">{{ exam.description or '' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-3">Assign to Students</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-3">
+                        {% for s in students %}
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="checkbox" name="assigned_students" value="{{ s._id }}"
+                                {% if s.assigned %}checked{% endif %}
+                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span>{{ s.student_id or '—' }} {{ s.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-lg font-semibold text-gray-800">Questions</h3>
+                        <button type="button" onclick="addQuestion()"
+                            class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition">+ Add Question</button>
+                    </div>
+                    <div id="questions">
+                        {% if exam and exam.questions %}
+                            {% for q in exam.questions %}
+                            {% set q_idx = loop.index0 %}
+                            <div class="question-block border border-gray-200 rounded-md p-4 mb-4 bg-gray-50">
+                                <div class="flex justify-between mb-2">
+                                    <span class="text-sm font-medium text-gray-600">Question {{ loop.index }}</span>
+                                    <button type="button" onclick="this.closest('.question-block').remove()"
+                                        class="text-red-500 text-xs hover:text-red-700">Remove</button>
+                                </div>
+                                <input type="text" name="q_{{ q_idx }}" value="{{ q.q }}" required placeholder="Question"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                {% for j in range(4) %}
+                                <div class="flex items-center gap-2 mb-1">
+                                    <input type="radio" name="q_{{ q_idx }}_correct" value="{{ j }}"
+                                        {% if q.correct == j %}checked{% endif %} required
+                                        class="text-blue-600 focus:ring-blue-500">
+                                    <input type="text" name="q_{{ q_idx }}_opt_{{ j }}" value="{{ q.options[j] }}" required placeholder="Option {{ 'ABCD'[j] }}"
+                                        class="flex-1 px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    {% if not exam or not exam.questions %}
+                    <p id="noQuestions" class="text-gray-500 text-sm">No questions yet. Click "+ Add Question" to begin.</p>
+                    {% endif %}
+                </div>
+
+                <button type="submit"
+                    class="bg-blue-600 text-white py-2 px-6 rounded-md hover:bg-blue-700 transition">
+                    {% if exam %}Save Changes{% else %}Create Exam{% endif %}
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        let qCount = {{ (exam.questions | length) if exam and exam.questions else 0 }};
+
+        function addQuestion() {
+            const i = qCount++;
+            const div = document.createElement('div');
+            div.className = 'question-block border border-gray-200 rounded-md p-4 mb-4 bg-gray-50';
+            div.innerHTML = `
+                <div class="flex justify-between mb-2">
+                    <span class="text-sm font-medium text-gray-600">Question ${i + 1}</span>
+                    <button type="button" onclick="this.closest('.question-block').remove()"
+                        class="text-red-500 text-xs hover:text-red-700">Remove</button>
+                </div>
+                <input type="text" name="q_${i}" required placeholder="Question"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                ${[0,1,2,3].map(j => `
+                    <div class="flex items-center gap-2 mb-1">
+                        <input type="radio" name="q_${i}_correct" value="${j}" required
+                            class="text-blue-600 focus:ring-blue-500">
+                        <input type="text" name="q_${i}_opt_${j}" required placeholder="Option ${'ABCD'[j]}"
+                            class="flex-1 px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                `).join('')}
+            `;
+            document.getElementById('questions').appendChild(div);
+            document.getElementById('noQuestions')?.remove();
+        }
+    </script>
+</body>
+</html>

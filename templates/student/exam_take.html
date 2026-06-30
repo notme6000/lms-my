@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ exam.title }} - LMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">LMS</h1>
+            <div class="flex items-center gap-4">
+                <span class="text-gray-600">{{ student.name }}</span>
+                <a href="/student/exams" class="text-blue-600 text-sm hover:underline">&larr; Back to Exams</a>
+                <a href="/logout" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm hover:bg-red-600 transition">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-3xl mx-auto px-4 py-8">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6">{{ exam.title }}</h2>
+
+        <form method="POST" action="/student/exams/{{ exam._id }}" id="examForm">
+            {% for q in exam.questions %}
+            {% set q_idx = loop.index0 %}
+            <div class="bg-white rounded-lg shadow p-6 mb-4">
+                <h3 class="font-medium text-gray-800 mb-3">Question {{ loop.index }}</h3>
+                <p class="text-gray-700 mb-3">{{ q.q }}</p>
+                <div class="space-y-2">
+                    {% for opt in q.options %}
+                    <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
+                        <input type="radio" name="answer_{{ q_idx }}" value="{{ loop.index0 }}" required
+                            class="text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm text-gray-700">{{ opt }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <button type="submit"
+                class="w-full bg-blue-600 text-white py-3 px-6 rounded-md hover:bg-blue-700 transition font-medium"
+                onclick="return confirm('Submit your answers? This cannot be undone.');">
+                Submit Exam
+            </button>
+        </form>
+    </main>
+</body>
+</html>

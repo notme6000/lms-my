@@ -38,9 +38,14 @@ class Database:
                 })
             if courses:
                 await self.db.exams.insert_one({
-                    "course_id": courses[0]["_id"],
                     "title": "Python Quiz",
-                    "exam_date": "2026-06-25",
+                    "description": "Test your Python basics knowledge",
+                    "questions": [
+                        {"q": "What type of language is Python?", "options": ["Compiled", "Interpreted", "Both", "None"], "correct": 1},
+                        {"q": "Which keyword defines a function?", "options": ["func", "define", "def", "lambda"], "correct": 2},
+                        {"q": "What is the output of print(2**3)?", "options": ["6", "8", "9", "Error"], "correct": 1},
+                    ],
+                    "assigned_students": [student.inserted_id],
                 })
 
 database = Database()

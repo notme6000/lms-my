@@ -26,5 +26,7 @@ env/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 - **`venv at `env/`**: gitignored, already has all deps. Not in requirements.txt.
 - **`opencode.json`** at root references `.opencode/codebase-index.md` via `instructions`.
 - **Collections**: `assessments` and `projects` — each has `student_id`, `course_id`, `heading`, `description`, `total_marks`, `marks_obtained`.
+- **Exams**: `exams` collection has `title`, `description`, `questions` (array of `{q, options[4], correct}`), and `assigned_students` (array of ObjectId). `exam_results` stores `exam_id`, `student_id`, `score`, `total`.
 - **Student ID**: sequential `S0001`, `S0002`, ... generated in `admin.py:_next_student_id()`.
 - **Delete cascades**: Deleting a student also removes their enrollments, assessments, and projects.
+- **Never drop the database**: The seed function only writes on empty collections, so data survives restarts. Do not call `dropDatabase()` in tests — it destroys user data.

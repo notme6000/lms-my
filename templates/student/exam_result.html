@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Result - LMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">LMS</h1>
+            <div class="flex items-center gap-4">
+                <span class="text-gray-600">{{ student.name }}</span>
+                <a href="/student/exams" class="text-blue-600 text-sm hover:underline">&larr; Back to Exams</a>
+                <a href="/logout" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm hover:bg-red-600 transition">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-lg mx-auto px-4 py-8 text-center">
+        <div class="bg-white rounded-lg shadow p-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-2">{{ exam.title }}</h2>
+            <p class="text-gray-500 mb-6">Your Result</p>
+
+            <div class="text-6xl font-bold mb-4 {% if percentage >= 50 %}text-green-600{% else %}text-red-600{% endif %}">
+                {{ '%.0f'|format(percentage) }}%
+            </div>
+
+            <p class="text-xl text-gray-700 mb-8">
+                {{ score }} / {{ total }} correct
+            </p>
+
+            <a href="/student/exams"
+                class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition">Back to Exams</a>
+        </div>
+    </main>
+</body>
+</html>
