@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}HackWise LMS{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            bg: '#050505',
+                            card: '#111111',
+                            surf: '#1A1A1A',
+                            border: 'rgba(255,255,255,0.07)',
+                            red: '#E50914',
+                            red2: '#FF2E38',
+                            muted: '#A0A0A0',
+                            green: '#10b981',
+                            purple: '#7c3aed',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Barlow', 'system-ui', 'sans-serif'],
+                        display: ['Barlow Condensed', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700;800;900&family=Barlow+Condensed:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Barlow', system-ui, sans-serif; background: #050505; color: #e2e8f0; }
+        .glass { background: rgba(17, 17, 17, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.07); }
+        .card { background: #111111; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; }
+        .card:hover { border-color: rgba(229, 9, 20, 0.25); }
+        .gradient-text { background: linear-gradient(135deg, #E50914, #FF2E38); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .btn-primary { background: #E50914; color: white; border-radius: 8px; font-weight: 600; transition: all 0.2s; border: none; }
+        .btn-primary:hover { background: #FF2E38; box-shadow: 0 0 30px rgba(229,9,20,0.4); transform: translateY(-1px); }
+        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border-radius: 8px; font-weight: 600; transition: all 0.2s; }
+        .btn-danger:hover { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); transform: translateY(-1px); }
+        .btn-ghost { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: #A0A0A0; border-radius: 8px; font-weight: 500; transition: all 0.2s; }
+        .btn-ghost:hover { border-color: #E50914; color: #E50914; }
+        .input-field { background: #050505; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #e2e8f0; padding: 0.625rem 1rem; width: 100%; transition: all 0.2s; outline: none; }
+        .input-field:focus { border-color: #E50914; box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1); }
+        .input-field::placeholder { color: #475569; }
+        select.input-field { color-scheme: dark; }
+        select.input-field option { background: #111111; color: #e2e8f0; }
+        .table-header { background: rgba(229, 9, 20, 0.03); border-bottom: 1px solid rgba(255,255,255,0.07); }
+        .table-row { border-bottom: 1px solid rgba(255,255,255,0.07); transition: all 0.15s; }
+        .table-row:hover { background: rgba(229, 9, 20, 0.03); }
+        .badge { display: inline-flex; align-items: center; padding: 0.125rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+        .badge-red { background: rgba(229, 9, 20, 0.1); color: #E50914; border: 1px solid rgba(229, 9, 20, 0.2); }
+        .badge-green { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .badge-yellow { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #E50914; }
+        .sidebar-link { display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem 1rem; border-radius: 8px; color: #A0A0A0; transition: all 0.2s; font-size: 0.875rem; font-weight: 500; text-decoration: none; }
+        .sidebar-link:hover { background: rgba(229, 9, 20, 0.05); color: #E50914; }
+        .sidebar-link.active { background: rgba(229, 9, 20, 0.1); color: #E50914; border: 1px solid rgba(229, 9, 20, 0.15); }
+        .stat-card { padding: 1.5rem; border-radius: 12px; background: #111111; border: 1px solid rgba(255,255,255,0.07); transition: all 0.2s; }
+        .stat-card:hover { border-color: rgba(229, 9, 20, 0.2); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+        .progress-bar { background: #1A1A1A; border-radius: 9999px; height: 8px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 9999px; background: linear-gradient(90deg, #E50914, #FF2E38); transition: width 0.5s ease; }
+        a { color: #E50914; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    {% block content %}{% endblock %}
+</body>
+</html>

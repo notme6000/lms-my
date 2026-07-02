@@ -1,147 +1,144 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard - LMS</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 min-h-screen">
-    <nav class="bg-white shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="text-xl font-bold text-gray-800">LMS</h1>
-            <div class="flex items-center gap-4">
-                <span class="text-gray-600">Welcome, {{ student.name }}</span>
-                <a href="/student/exams" class="text-blue-600 text-sm hover:underline">My Exams</a>
-                <a href="/logout" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm hover:bg-red-600 transition">Logout</a>
+{% extends "student_base.html" %}
+{% block title %}Dashboard - HackWise LMS{% endblock %}
+{% set active_page = 'dashboard' %}
+{% block main %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-white">My Dashboard</h1>
+    <p class="text-[#A0A0A0] mt-1">Welcome back, <span class="text-[#E50914]">{{ student.name }}</span></p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="card p-6">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-[rgba(229,9,20,0.1)] flex items-center justify-center">
+                <svg class="w-5 h-5 text-[#E50914]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
             </div>
+            <h3 class="text-lg font-semibold text-white">My Courses</h3>
         </div>
-    </nav>
+        {% if courses %}
+        <ul class="space-y-3">
+            {% for course in courses %}
+            <li class="flex items-center justify-between py-2 border-b border-[rgba(255,255,255,0.07)] last:border-0">
+                <span class="text-[#e2e8f0] font-medium">{{ course.title }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-[#A0A0A0]">No courses enrolled yet.</p>
+        {% endif %}
+    </div>
 
-    <main class="max-w-7xl mx-auto px-4 py-8">
-        <h2 class="text-2xl font-semibold text-gray-800 mb-6">My Dashboard</h2>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">My Courses</h3>
-                {% if courses %}
-                <ul class="space-y-3">
-                    {% for course in courses %}
-                    <li class="border-b pb-2">
-                        <span class="font-medium text-gray-700">{{ course.title }}</span>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <p class="text-gray-500">No courses enrolled yet.</p>
-                {% endif %}
+    <div class="card p-6">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-[rgba(229,9,20,0.1)] flex items-center justify-center">
+                <svg class="w-5 h-5 text-[#E50914]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
             </div>
-
-            <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Upcoming Exams</h3>
-                {% if upcoming_exams %}
-                <ul class="space-y-3">
-                    {% for exam in upcoming_exams %}
-                    <li class="border-b pb-2">
-                        <span class="font-medium text-gray-700">{{ exam.title }}</span>
-                        <span class="text-sm text-gray-500 block">Date: {{ exam.date }}</span>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <p class="text-gray-500">No upcoming exams.</p>
-                {% endif %}
-            </div>
-
-            <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Assessments</h3>
-                {% if assessments %}
-                <ul class="space-y-3">
-                    {% for a in assessments %}
-                    <li class="border-b pb-2">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <span class="font-medium text-gray-700">{{ a.heading }}</span>
-                                {% if a.description %}
-                                <p class="text-sm text-gray-500">{{ a.description }}</p>
-                                {% endif %}
-                                <span class="text-xs text-gray-400">{{ a.course_title }}</span>
-                            </div>
-                            <span class="text-sm font-medium {% if a.marks_obtained >= a.total_marks %}text-green-600{% else %}text-yellow-600{% endif %}">
-                                {{ a.marks_obtained }} / {{ a.total_marks }}
-                            </span>
-                        </div>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <p class="text-gray-500">No assessments recorded yet.</p>
-                {% endif %}
-            </div>
-
-            <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Projects</h3>
-                {% if projects %}
-                <ul class="space-y-3">
-                    {% for p in projects %}
-                    <li class="border-b pb-2">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <span class="font-medium text-gray-700">{{ p.heading }}</span>
-                                {% if p.description %}
-                                <p class="text-sm text-gray-500">{{ p.description }}</p>
-                                {% endif %}
-                                <span class="text-xs text-gray-400">{{ p.course_title }}</span>
-                            </div>
-                            <span class="text-sm font-medium {% if p.marks_obtained >= p.total_marks %}text-green-600{% else %}text-yellow-600{% endif %}">
-                                {{ p.marks_obtained }} / {{ p.total_marks }}
-                            </span>
-                        </div>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <p class="text-gray-500">No projects recorded yet.</p>
-                {% endif %}
-            </div>
-
-            <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress</h3>
-                {% if courses %}
-                <ul class="space-y-4">
-                    {% for course in courses %}
-                    <li>
-                        <div class="flex justify-between text-sm mb-1">
-                            <span class="text-gray-700">{{ course.title }}</span>
-                            <span class="text-gray-500">{{ course.progress }}%</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                                class="bg-blue-600 h-2 rounded-full"
-                                style="width: {{ course.progress }}%"
-                            ></div>
-                        </div>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <p class="text-gray-500">No progress data available.</p>
-                {% endif %}
-            </div>
-
-            <div class="bg-white rounded-lg shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Notifications</h3>
-                {% if notifications %}
-                <ul class="space-y-2">
-                    {% for note in notifications %}
-                    <li class="bg-blue-50 text-blue-700 px-3 py-2 rounded-md text-sm">{{ note }}</li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <p class="text-gray-500">No notifications.</p>
-                {% endif %}
-            </div>
+            <h3 class="text-lg font-semibold text-white">Upcoming Exams</h3>
         </div>
-    </main>
-</body>
-</html>
+        {% if upcoming_exams %}
+        <ul class="space-y-3">
+            {% for exam in upcoming_exams %}
+            <li class="flex items-center justify-between py-2 border-b border-[rgba(255,255,255,0.07)] last:border-0">
+                <div>
+                    <span class="text-[#e2e8f0] font-medium">{{ exam.title }}</span>
+                    <span class="text-[#A0A0A0] text-sm block">Date: {{ exam.date }}</span>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-[#A0A0A0]">No upcoming exams.</p>
+        {% endif %}
+    </div>
+
+    <div class="card p-6">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-[rgba(229,9,20,0.1)] flex items-center justify-center">
+                <svg class="w-5 h-5 text-[#E50914]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <h3 class="text-lg font-semibold text-white">Assessments</h3>
+        </div>
+        {% if assessments %}
+        <ul class="space-y-3">
+            {% for a in assessments %}
+            <li class="py-2 border-b border-[rgba(255,255,255,0.07)] last:border-0">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-[#e2e8f0] font-medium">{{ a.heading }}</span>
+                        {% if a.description %}
+                        <p class="text-[#A0A0A0] text-sm">{{ a.description }}</p>
+                        {% endif %}
+                        <span class="text-[#A0A0A0] text-xs">{{ a.course_title }}</span>
+                    </div>
+                    <span class="text-sm font-medium badge {% if a.marks_obtained >= a.total_marks %}badge-green{% else %}badge-yellow{% endif %}">
+                        {{ a.marks_obtained }} / {{ a.total_marks }}
+                    </span>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-[#A0A0A0]">No assessments recorded yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="card p-6">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-[rgba(229,9,20,0.1)] flex items-center justify-center">
+                <svg class="w-5 h-5 text-[#E50914]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+            </div>
+            <h3 class="text-lg font-semibold text-white">Projects</h3>
+        </div>
+        {% if projects %}
+        <ul class="space-y-3">
+            {% for p in projects %}
+            <li class="py-2 border-b border-[rgba(255,255,255,0.07)] last:border-0">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-[#e2e8f0] font-medium">{{ p.heading }}</span>
+                        {% if p.description %}
+                        <p class="text-[#A0A0A0] text-sm">{{ p.description }}</p>
+                        {% endif %}
+                        <span class="text-[#A0A0A0] text-xs">{{ p.course_title }}</span>
+                    </div>
+                    <span class="text-sm font-medium badge {% if p.marks_obtained >= p.total_marks %}badge-green{% else %}badge-yellow{% endif %}">
+                        {{ p.marks_obtained }} / {{ p.total_marks }}
+                    </span>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-[#A0A0A0]">No projects recorded yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="card p-6">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-[rgba(229,9,20,0.1)] flex items-center justify-center">
+                <svg class="w-5 h-5 text-[#E50914]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            </div>
+            <h3 class="text-lg font-semibold text-white">Progress</h3>
+        </div>
+        {% if courses %}
+        <ul class="space-y-4">
+            {% for course in courses %}
+            <li>
+                <div class="flex justify-between text-sm mb-1.5">
+                    <span class="text-[#e2e8f0]">{{ course.title }}</span>
+                    <span class="text-[#A0A0A0]">{{ course.progress }}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ course.progress }}%"></div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-[#A0A0A0]">No progress data available.</p>
+        {% endif %}
+    </div>
+
+
+</div>
+{% endblock %}

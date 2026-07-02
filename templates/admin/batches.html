@@ -1,0 +1,35 @@
+{% extends "admin_base.html" %}
+{% block title %}Batches - HackWise LMS{% endblock %}
+{% set active_page = 'batches' %}
+{% block main %}
+<div class="mb-6 flex items-center justify-between flex-wrap gap-4">
+    <div>
+        <h1 class="text-3xl font-bold text-white">Batches</h1>
+        <p class="text-[#A0A0A0] text-sm mt-1">Manage student batches</p>
+    </div>
+    <a href="/admin/batches/create" class="btn-primary px-4 py-2 text-sm no-underline">+ New Batch</a>
+</div>
+
+<div class="grid gap-4">
+    {% for b in batches %}
+    <div class="card p-5 flex items-center justify-between flex-wrap gap-4">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-lg bg-[rgba(229,9,20,0.1)] flex items-center justify-center text-[#E50914] font-bold font-mono text-lg">{{ b.batch_id }}</div>
+            <div>
+                <h3 class="text-white font-semibold text-lg">{{ b.name }}</h3>
+                <p class="text-[#A0A0A0] text-sm">{{ b.student_count }} student{% if b.student_count != 1 %}s{% endif %}</p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <a href="/admin/batches/{{ b._id }}/edit" class="px-3 py-1 rounded-md text-xs font-medium bg-[rgba(229,9,20,0.1)] text-[#E50914] border border-[rgba(229,9,20,0.2)] hover:bg-[rgba(229,9,20,0.15)] no-underline transition-colors">Edit</a>
+            <form method="POST" action="/admin/batches/{{ b._id }}/delete" style="display:inline" onsubmit="return confirm('Delete batch {{ b.batch_id }}? Students in this batch will not be deleted.');">
+                <button type="submit" class="px-3 py-1 rounded-md text-xs font-medium bg-[rgba(239,68,68,0.1)] text-[#ef4444] border border-[rgba(239,68,68,0.2)] hover:bg-[rgba(239,68,68,0.15)] transition-colors">Delete</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% if not batches %}
+<p class="text-center py-12 text-[#A0A0A0]">No batches yet. Create one to group your students.</p>
+{% endif %}
+{% endblock %}

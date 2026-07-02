@@ -1,60 +1,44 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exam Results - LMS Admin</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 min-h-screen">
-    <nav class="bg-white shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="text-xl font-bold text-gray-800">LMS Admin</h1>
-            <div class="flex items-center gap-4">
-                <span class="text-gray-600">Welcome, {{ admin.username }}</span>
-                <a href="/logout" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm hover:bg-red-600 transition">Logout</a>
-            </div>
-        </div>
-    </nav>
+{% extends "admin_base.html" %}
+{% block title %}Exam Results - HackWise LMS{% endblock %}
+{% set active_page = 'exams' %}
+{% block main %}
+<div class="mb-6">
+    <a href="/admin/exams" class="text-[#A0A0A0] hover:text-[#E50914] text-sm no-underline">&larr; Exams</a>
+    <h1 class="text-3xl font-bold text-white mt-2">Results: <span class="gradient-text">{{ exam.title }}</span></h1>
+</div>
 
-    <main class="max-w-7xl mx-auto px-4 py-8">
-        <div class="mb-6 flex items-center gap-4">
-            <a href="/admin/exams" class="text-blue-600 hover:underline">&larr; Exams</a>
-            <h2 class="text-2xl font-semibold text-gray-800">Results: {{ exam.title }}</h2>
-        </div>
-
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <table class="w-full text-left">
-                <thead>
-                    <tr class="border-b bg-gray-50">
-                        <th class="py-3 px-4 text-gray-600 font-medium">Student ID</th>
-                        <th class="py-3 px-4 text-gray-600 font-medium">Name</th>
-                        <th class="py-3 px-4 text-gray-600 font-medium">Email</th>
-                        <th class="py-3 px-4 text-gray-600 font-medium">Score</th>
-                        <th class="py-3 px-4 text-gray-600 font-medium">Percentage</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for r in results %}
-                    <tr class="border-b">
-                        <td class="py-3 px-4 font-mono text-sm">{{ r.student_id or '—' }}</td>
-                        <td class="py-3 px-4">{{ r.name }}</td>
-                        <td class="py-3 px-4">{{ r.email }}</td>
-                        <td class="py-3 px-4">{{ r.score }} / {{ r.total }}</td>
-                        <td class="py-3 px-4">
-                            {% set pct = (r.score / r.total * 100) if r.total else 0 %}
-                            <span class="{% if pct >= 50 %}text-green-600{% else %}text-red-600{% endif %} font-medium">
-                                {{ '%.1f'|format(pct) }}%
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% if not results %}
-            <p class="text-gray-500 text-center py-8">No submissions yet.</p>
-            {% endif %}
-        </div>
-    </main>
-</body>
-</html>
+<div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="table-header">
+                    <th class="py-3 px-5 text-[#A0A0A0] text-xs font-medium uppercase tracking-wider">Student ID</th>
+                    <th class="py-3 px-5 text-[#A0A0A0] text-xs font-medium uppercase tracking-wider">Name</th>
+                    <th class="py-3 px-5 text-[#A0A0A0] text-xs font-medium uppercase tracking-wider">Email</th>
+                    <th class="py-3 px-5 text-[#A0A0A0] text-xs font-medium uppercase tracking-wider">Score</th>
+                    <th class="py-3 px-5 text-[#A0A0A0] text-xs font-medium uppercase tracking-wider">Percentage</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in results %}
+                <tr class="table-row">
+                    <td class="py-3 px-5 font-mono text-sm text-[#A0A0A0]">{{ r.student_id or '—' }}</td>
+                    <td class="py-3 px-5 text-white font-medium">{{ r.name }}</td>
+                    <td class="py-3 px-5 text-[#A0A0A0]">{{ r.email }}</td>
+                    <td class="py-3 px-5 text-white">{{ r.score }} / {{ r.total }}</td>
+                    <td class="py-3 px-5">
+                        {% set pct = (r.score / r.total * 100) if r.total else 0 %}
+                        <span class="badge {% if pct >= 50 %}badge-green{% else %}badge-red{% endif %}">
+                            {{ '%.1f'|format(pct) }}%
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if not results %}
+    <p class="text-center py-12 text-[#A0A0A0]">No submissions yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

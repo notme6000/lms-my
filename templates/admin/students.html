@@ -1,88 +1,66 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Students - LMS Admin</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 min-h-screen">
-    <nav class="bg-white shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="text-xl font-bold text-gray-800">LMS Admin</h1>
-            <div class="flex items-center gap-4">
-                <span class="text-gray-600">Welcome, {{ admin.username }}</span>
-                <a href="/logout" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm hover:bg-red-600 transition">Logout</a>
-            </div>
-        </div>
-    </nav>
+{% extends "admin_base.html" %}
+{% block title %}Students - HackWise LMS{% endblock %}
+{% set active_page = 'students' %}
+{% block main %}
+<div class="mb-6 flex items-center justify-between flex-wrap gap-4">
+    <div>
+        <h1 class="text-3xl font-bold text-white">Students</h1>
+        <p class="text-[#A0A0A0] text-sm mt-1">Manage all registered students</p>
+    </div>
+    <a href="/admin/students/create" class="btn-primary px-4 py-2 text-sm no-underline">+ Create Student</a>
+</div>
 
-    <main class="max-w-7xl mx-auto px-4 py-8">
-        <div class="mb-6 flex items-center justify-between flex-wrap gap-4">
-            <div class="flex items-center gap-4">
-                <a href="/admin/dashboard" class="text-blue-600 hover:underline">&larr; Dashboard</a>
-                <h2 class="text-2xl font-semibold text-gray-800">Students</h2>
-            </div>
-            <a href="/admin/students/create"
-                class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition">
-                + Create Student
-            </a>
-        </div>
+<form method="GET" action="/admin/students" class="mb-5">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search by name, email, or student ID..." class="input-field max-w-md">
+</form>
 
-        <form method="GET" action="/admin/students" class="mb-4">
-            <input type="text" name="q" value="{{ q }}" placeholder="Search by name, email, or student ID..."
-                class="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-        </form>
-
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <table class="w-full text-left">
-                <thead>
-                    <tr class="border-b bg-gray-50">
-                        <th class="py-3 px-4 text-gray-600 font-medium">Student ID</th>
-                        <th class="py-3 px-4 text-gray-600 font-medium">Name</th>
-                        <th class="py-3 px-4 text-gray-600 font-medium">Email</th>
-                        <th class="py-3 px-4 text-gray-600 font-medium">Status</th>
-                        <th class="py-3 px-4 text-gray-600 font-medium">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in students %}
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="py-3 px-4 font-mono text-sm">{{ s.student_id or '—' }}</td>
-                        <td class="py-3 px-4">
-                            <a href="/admin/students/{{ s._id }}" class="text-blue-600 hover:underline font-medium">{{ s.name }}</a>
-                        </td>
-                        <td class="py-3 px-4">{{ s.email }}</td>
-                        <td class="py-3 px-4">
-                            {% if s.must_change_password %}
-                            <span class="text-yellow-600 text-sm">Pending password change</span>
-                            {% else %}
-                            <span class="text-green-600 text-sm">Active</span>
-                            {% endif %}
-                        </td>
-                        <td class="py-3 px-4">
-                            <div class="flex gap-2">
-                                <a href="/admin/students/{{ s._id }}"
-                                    class="bg-indigo-500 text-white px-3 py-1 rounded text-xs hover:bg-indigo-600 transition">Manage</a>
-                                <form method="POST" action="/admin/students/{{ s._id }}/reset-password" style="display:inline">
-                                    <button type="submit"
-                                        class="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600 transition">Reset PW</button>
-                                </form>
-                                <form method="POST" action="/admin/students/{{ s._id }}/delete" style="display:inline"
-                                    onsubmit="return confirm('Delete {{ s.name }}? This cannot be undone.');">
-                                    <button type="submit"
-                                        class="bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600 transition">Delete</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% if not students %}
-            <p class="text-gray-500 text-center py-8">No students found.</p>
-            {% endif %}
-        </div>
-    </main>
-</body>
-</html>
+<div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="table-header">
+                    <th class="py-3 px-5 text-[#A0A0A0] text-xs font-medium uppercase tracking-wider">Student ID</th>
+                    <th class="py-3 px-5 text-[#A0A0A0] text-xs font-medium uppercase tracking-wider">Name</th>
+                    <th class="py-3 px-5 text-[#A0A0A0] text-xs font-medium uppercase tracking-wider">Email</th>
+                    <th class="py-3 px-5 text-[#A0A0A0] text-xs font-medium uppercase tracking-wider">Batch</th>
+                    <th class="py-3 px-5 text-[#A0A0A0] text-xs font-medium uppercase tracking-wider">Status</th>
+                    <th class="py-3 px-5 text-[#A0A0A0] text-xs font-medium uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in students %}
+                <tr class="table-row">
+                    <td class="py-3 px-5 font-mono text-sm text-[#A0A0A0]">{{ s.student_id or '—' }}</td>
+                    <td class="py-3 px-5">
+                        <a href="/admin/students/{{ s._id }}" class="text-white font-medium hover:text-[#E50914] no-underline">{{ s.name }}</a>
+                    </td>
+                    <td class="py-3 px-5 text-[#A0A0A0]">{{ s.email }}</td>
+                    <td class="py-3 px-5">{% if s.batch_id %}<span class="badge badge-red">{{ s.batch_id }}</span>{% else %}<span class="text-[#A0A0A0] text-sm">—</span>{% endif %}</td>
+                    <td class="py-3 px-5">
+                        {% if s.must_change_password %}
+                        <span class="badge badge-yellow">Pending password change</span>
+                        {% else %}
+                        <span class="badge badge-green">Active</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-3 px-5">
+                        <div class="flex gap-2">
+                            <a href="/admin/students/{{ s._id }}" class="px-3 py-1 rounded-md text-xs font-medium bg-[rgba(229,9,20,0.1)] text-[#E50914] border border-[rgba(229,9,20,0.2)] hover:bg-[rgba(229,9,20,0.15)] no-underline transition-colors">Manage</a>
+                            <form method="POST" action="/admin/students/{{ s._id }}/reset-password" style="display:inline">
+                                <button type="submit" class="px-3 py-1 rounded-md text-xs font-medium bg-[rgba(245,158,11,0.1)] text-[#f59e0b] border border-[rgba(245,158,11,0.2)] hover:bg-[rgba(245,158,11,0.15)] transition-colors">Reset PW</button>
+                            </form>
+                            <form method="POST" action="/admin/students/{{ s._id }}/delete" style="display:inline" onsubmit="return confirm('Delete {{ s.name }}? This cannot be undone.');">
+                                <button type="submit" class="px-3 py-1 rounded-md text-xs font-medium bg-[rgba(239,68,68,0.1)] text-[#ef4444] border border-[rgba(239,68,68,0.2)] hover:bg-[rgba(239,68,68,0.15)] transition-colors">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if not students %}
+    <p class="text-center py-12 text-[#A0A0A0]">No students found.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "admin_base.html" %}
+{% block title %}{% if batch %}Edit{% else %}Create{% endif %} Batch - HackWise LMS{% endblock %}
+{% set active_page = 'batches' %}
+{% block main %}
+<div class="mb-6">
+    <a href="/admin/batches" class="text-[#A0A0A0] hover:text-[#E50914] text-sm no-underline">&larr; Batches</a>
+    <h1 class="text-3xl font-bold text-white mt-2">{% if batch %}Edit{% else %}Create{% endif %} Batch</h1>
+</div>
+
+{% if error %}
+<div class="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] px-4 py-3 rounded-lg mb-6 text-sm">{{ error }}</div>
+{% endif %}
+
+<div class="card p-6 max-w-lg">
+    <form method="POST" action="/admin/batches/{% if batch %}{{ batch._id }}/edit{% else %}create{% endif %}" class="space-y-5">
+        <div>
+            <label class="block text-sm font-medium text-[#A0A0A0] mb-2" for="name">Batch Name</label>
+            <input type="text" name="name" id="name" required value="{{ batch.name or '' }}" placeholder="e.g. Batch A, Morning Batch" class="input-field">
+            {% if generated_id %}
+            <p class="text-xs text-[#A0A0A0] mt-1">Batch ID: <span class="text-[#E50914] font-mono">{{ generated_id }}</span></p>
+            {% endif %}
+        </div>
+        <button type="submit" class="btn-primary w-full py-2.5">{% if batch %}Save Changes{% else %}Create Batch{% endif %}</button>
+    </form>
+</div>
+{% endblock %}

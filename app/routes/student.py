@@ -47,12 +47,32 @@ async def dashboard(
         course = await database.db.courses.find_one({"_id": p["course_id"]})
         p["course_title"] = course["title"] if course else ""
 
+    notifications = []
+    upcoming = await database.db.exams.find(
+        {"assigned_students": ObjectId(student_id)}
+    ).to_list(length=10)
+    for exam in upcoming:
+        notifications.append(f"📝 Exam \"{exam['title']}\" assigned to you — be prepared!")
+
+    pending = [a for a in assessments if a.get("marks_obtained", 0) == 0]
+    if pending:
+        notifications.append(f"📋 You have {len(pending)} pending assessment(s) to complete.")
+
+    incomplete = [p for p in projects if p.get("marks_obtained", 0) == 0]
+    if incomplete:
+        notifications.append(f"🔧 You have {len(incomplete)} pending project(s) to submit.")
+
+    if not notifications:
+        notifications.append("✅ All caught up! No new notifications.")
+
     return templates.TemplateResponse("student/dashboard.html", {
         "request": request,
         "student": student_user,
         "courses": courses,
         "assessments": assessments,
         "projects": projects,
+        "notifications": notifications,
+        "upcoming_exams": upcoming,
     })
 
 
@@ -79,6 +99,8 @@ async def list_exams(
             "_id": eid,
             "title": e["title"],
             "description": e.get("description", ""),
+            "exam_date": e.get("exam_date", ""),
+            "exam_time": e.get("exam_time", ""),
             "question_count": len(e.get("questions", [])),
             "taken": eid in taken_ids,
             "score": taken_map[eid]["score"] if eid in taken_map else None,
@@ -115,7 +137,14 @@ async def take_exam(
     return templates.TemplateResponse("student/exam_take.html", {
         "request": request,
         "student": student_user,
-        "exam": {"_id": eid, "title": exam["title"], "questions": exam["questions"]},
+        "exam": {
+            "_id": eid,
+            "title": exam["title"],
+            "description": exam.get("description", ""),
+            "exam_date": exam.get("exam_date", ""),
+            "exam_time": exam.get("exam_time", ""),
+            "questions": exam["questions"],
+        },
     })
 
 

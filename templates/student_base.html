@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="min-h-screen">
+    <nav class="glass border-b border-[rgba(255,255,255,0.07)] sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <a href="/student/dashboard" class="flex items-center gap-2 no-underline">
+                <div class="w-8 h-8 rounded-lg bg-[#E50914] flex items-center justify-center text-white font-bold text-sm">H</div>
+                <span class="font-bold text-white text-lg font-['Barlow_Condensed']">HackWise</span>
+            </a>
+            <div class="flex items-center gap-4">
+                <a href="/student/dashboard" class="text-sm text-[#A0A0A0] hover:text-[#E50914] transition-colors no-underline {% if active_page == 'dashboard' %}text-[#E50914]{% endif %}">Dashboard</a>
+                <a href="/student/exams" class="text-sm text-[#A0A0A0] hover:text-[#E50914] transition-colors no-underline {% if active_page == 'exams' %}text-[#E50914]{% endif %}">Exams</a>
+                {% if notifications is defined and notifications %}
+                <div class="relative notification-container">
+                    <button onclick="toggleNotifications()" class="relative p-2 text-[#A0A0A0] hover:text-[#E50914] transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                        <span class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#E50914] text-white text-[9px] font-bold rounded-full flex items-center justify-center">{{ notifications|length }}</span>
+                    </button>
+                    <div id="notificationDropdown" class="absolute right-0 mt-2 w-80 bg-[#111111] border border-[rgba(255,255,255,0.1)] rounded-lg shadow-2xl hidden overflow-hidden">
+                        <div class="p-3 border-b border-[rgba(255,255,255,0.07)]">
+                            <p class="text-sm font-semibold text-white">Notifications</p>
+                        </div>
+                        <div class="max-h-64 overflow-y-auto">
+                            {% for note in notifications %}
+                            <div class="px-4 py-3 border-b border-[rgba(255,255,255,0.05)] hover:bg-[rgba(229,9,20,0.03)] text-sm text-[#e2e8f0]">{{ note }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="flex items-center gap-3 pl-4 border-l border-[rgba(255,255,255,0.07)]">
+                    <div class="w-8 h-8 rounded-full bg-[#E50914] flex items-center justify-center text-white font-bold text-xs">{{ student.name[0]|upper }}</div>
+                    <span class="text-sm text-white font-medium">{{ student.name }}</span>
+                </div>
+                <a href="/logout" class="btn-ghost text-xs px-3 py-1.5 no-underline">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <script>
+    function toggleNotifications() {
+        const el = document.getElementById('notificationDropdown');
+        el.classList.toggle('hidden');
+    }
+    document.addEventListener('click', function(e) {
+        const container = document.querySelector('.notification-container');
+        const dropdown = document.getElementById('notificationDropdown');
+        if (container && dropdown && !container.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+    </script>
+
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        {% block main %}{% endblock %}
+    </main>
+</div>
+{% endblock %}

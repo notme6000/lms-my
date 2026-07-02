@@ -20,6 +20,14 @@ async def _next_student_id():
         num = 1
     return f"S{num:04d}"
 
+async def _next_batch_id():
+    last = await database.db.batches.find_one({}, sort=[("batch_id", -1)])
+    if last and "batch_id" in last:
+        num = int(last["batch_id"][1:]) + 1
+    else:
+        num = 1
+    return f"B{num:04d}"
+
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(
@@ -74,10 +82,14 @@ async def create_student_page(
     courses = await database.db.courses.find().to_list(length=50)
     for c in courses:
         c["_id"] = str(c["_id"])
+    batches = await database.db.batches.find().to_list(length=50)
+    for b in batches:
+        b["_id"] = str(b["_id"])
     return templates.TemplateResponse("admin/create_student.html", {
         "request": request,
         "admin": admin_user,
         "courses": courses,
+        "batches": batches,
     })
 
 
@@ -89,35 +101,42 @@ async def create_student(
     form = await request.form()
     name = form.get("name", "").strip()
     email = form.get("email", "").strip().lower()
+    batch_id = form.get("batch_id", "").strip()
     course_ids = form.getlist("course_ids")
 
     courses = await database.db.courses.find().to_list(length=50)
     for c in courses:
         c["_id"] = str(c["_id"])
+    batches = await database.db.batches.find().to_list(length=50)
+    for b in batches:
+        b["_id"] = str(b["_id"])
 
     if not name or not email:
         return templates.TemplateResponse(
             "admin/create_student.html",
-            {"request": request, "admin": admin_user, "courses": courses, "error": "Name and email are required."},
+            {"request": request, "admin": admin_user, "courses": courses, "batches": batches, "error": "Name and email are required."},
         )
 
     existing = await database.db.students.find_one({"email": email})
     if existing:
         return templates.TemplateResponse(
             "admin/create_student.html",
-            {"request": request, "admin": admin_user, "courses": courses, "error": "A student with this email already exists."},
+            {"request": request, "admin": admin_user, "courses": courses, "batches": batches, "error": "A student with this email already exists."},
         )
 
     student_id = await _next_student_id()
     password = secrets.token_urlsafe(12)
     hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    result = await database.db.students.insert_one({
+    student_doc = {
         "student_id": student_id,
         "name": name,
         "email": email,
         "password": hashed,
         "must_change_password": True,
-    })
+    }
+    if batch_id:
+        student_doc["batch_id"] = batch_id
+    result = await database.db.students.insert_one(student_doc)
 
     for cid in course_ids:
         await database.db.enrollments.insert_one({
@@ -132,6 +151,7 @@ async def create_student(
             "request": request,
             "admin": admin_user,
             "courses": courses,
+            "batches": batches,
             "success": "Student created! Share these credentials:",
             "generated_student_id": student_id,
             "generated_email": email,
@@ -301,6 +321,100 @@ async def delete_project(
     return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
 
 
+@router.get("/batches", response_class=HTMLResponse)
+async def list_batches(
+    request: Request,
+    admin_user: dict = Depends(get_admin_user),
+):
+    batches = await database.db.batches.find().to_list(length=50)
+    for b in batches:
+        b["_id"] = str(b["_id"])
+        b["student_count"] = await database.db.students.count_documents({"batch_id": b["batch_id"]})
+    return templates.TemplateResponse("admin/batches.html", {
+        "request": request,
+        "admin": admin_user,
+        "batches": batches,
+    })
+
+
+@router.get("/batches/create", response_class=HTMLResponse)
+async def create_batch_page(
+    request: Request,
+    admin_user: dict = Depends(get_admin_user),
+):
+    return templates.TemplateResponse("admin/batch_form.html", {
+        "request": request,
+        "admin": admin_user,
+        "batch": None,
+    })
+
+
+@router.post("/batches/create", response_class=HTMLResponse)
+async def create_batch(
+    request: Request,
+    admin_user: dict = Depends(get_admin_user),
+):
+    form = await request.form()
+    name = form.get("name", "").strip()
+    if not name:
+        return templates.TemplateResponse(
+            "admin/batch_form.html",
+            {"request": request, "admin": admin_user, "batch": None, "error": "Name is required."},
+        )
+    batch_id = await _next_batch_id()
+    await database.db.batches.insert_one({"batch_id": batch_id, "name": name})
+    return RedirectResponse(url="/admin/batches", status_code=303)
+
+
+@router.get("/batches/{bid}/edit", response_class=HTMLResponse)
+async def edit_batch_page(
+    request: Request,
+    bid: str,
+    admin_user: dict = Depends(get_admin_user),
+):
+    batch = await database.db.batches.find_one({"_id": ObjectId(bid)})
+    if not batch:
+        return RedirectResponse(url="/admin/batches", status_code=303)
+    batch["_id"] = str(batch["_id"])
+    return templates.TemplateResponse("admin/batch_form.html", {
+        "request": request,
+        "admin": admin_user,
+        "batch": batch,
+    })
+
+
+@router.post("/batches/{bid}/edit", response_class=HTMLResponse)
+async def edit_batch(
+    request: Request,
+    bid: str,
+    admin_user: dict = Depends(get_admin_user),
+):
+    form = await request.form()
+    name = form.get("name", "").strip()
+    if not name:
+        batch = await database.db.batches.find_one({"_id": ObjectId(bid)})
+        batch["_id"] = str(batch["_id"])
+        return templates.TemplateResponse(
+            "admin/batch_form.html",
+            {"request": request, "admin": admin_user, "batch": batch, "error": "Name is required."},
+        )
+    await database.db.batches.update_one(
+        {"_id": ObjectId(bid)},
+        {"$set": {"name": name}},
+    )
+    return RedirectResponse(url="/admin/batches", status_code=303)
+
+
+@router.post("/batches/{bid}/delete", response_class=HTMLResponse)
+async def delete_batch(
+    request: Request,
+    bid: str,
+    admin_user: dict = Depends(get_admin_user),
+):
+    await database.db.batches.delete_one({"_id": ObjectId(bid)})
+    return RedirectResponse(url="/admin/batches", status_code=303)
+
+
 @router.get("/courses", response_class=HTMLResponse)
 async def list_courses(
     request: Request,
@@ -429,11 +543,21 @@ async def create_exam_page(
     for s in students:
         s["_id"] = str(s["_id"])
         s.pop("password", None)
+    batches = await database.db.batches.find().to_list(length=50)
+    for b in batches:
+        b["_id"] = str(b["_id"])
+    batch_map = {}
+    for s in students:
+        bid = s.get("batch_id")
+        if bid:
+            batch_map.setdefault(bid, []).append(s["_id"])
     return templates.TemplateResponse("admin/exam_form.html", {
         "request": request,
         "admin": admin_user,
         "exam": None,
         "students": students,
+        "batches": batches,
+        "batch_map": batch_map,
     })
 
 
@@ -445,6 +569,9 @@ async def create_exam(
     form = await request.form()
     title = form.get("title", "").strip()
     description = form.get("description", "").strip()
+    exam_date = form.get("exam_date", "").strip()
+    exam_time = form.get("exam_time", "").strip()
+    batch_id = form.get("batch_id", "").strip()
     assigned = form.getlist("assigned_students")
 
     questions = []
@@ -461,19 +588,36 @@ async def create_exam(
     for s in students:
         s["_id"] = str(s["_id"])
         s.pop("password", None)
+    batches = await database.db.batches.find().to_list(length=50)
+    for b in batches:
+        b["_id"] = str(b["_id"])
 
     if not title or not questions:
         return templates.TemplateResponse(
             "admin/exam_form.html",
-            {"request": request, "admin": admin_user, "exam": None, "students": students, "error": "Title and at least one question are required."},
+            {"request": request, "admin": admin_user, "exam": None, "students": students, "batches": batches, "error": "Title and at least one question are required."},
         )
 
-    await database.db.exams.insert_one({
+    if batch_id:
+        batch_students = await database.db.students.find({"batch_id": batch_id}).to_list(length=200)
+        for bs in batch_students:
+            sid = str(bs["_id"])
+            if sid not in assigned:
+                assigned.append(sid)
+
+    doc = {
         "title": title,
         "description": description,
+        "exam_date": exam_date,
+        "exam_time": exam_time,
         "questions": questions,
         "assigned_students": [ObjectId(s) for s in assigned],
-    })
+    }
+    if not exam_date:
+        doc.pop("exam_date")
+    if not exam_time:
+        doc.pop("exam_time")
+    await database.db.exams.insert_one(doc)
     return RedirectResponse(url="/admin/exams", status_code=303)
 
 
@@ -494,12 +638,22 @@ async def edit_exam_page(
         s["_id"] = str(s["_id"])
         s.pop("password", None)
         s["assigned"] = str(s["_id"]) in assigned_ids
+    batches = await database.db.batches.find().to_list(length=50)
+    for b in batches:
+        b["_id"] = str(b["_id"])
+    batch_map = {}
+    for s in students:
+        bid = s.get("batch_id")
+        if bid:
+            batch_map.setdefault(bid, []).append(s["_id"])
 
     return templates.TemplateResponse("admin/exam_form.html", {
         "request": request,
         "admin": admin_user,
         "exam": exam,
         "students": students,
+        "batches": batches,
+        "batch_map": batch_map,
     })
 
 
@@ -512,6 +666,9 @@ async def edit_exam(
     form = await request.form()
     title = form.get("title", "").strip()
     description = form.get("description", "").strip()
+    exam_date = form.get("exam_date", "").strip()
+    exam_time = form.get("exam_time", "").strip()
+    batch_id = form.get("batch_id", "").strip()
     assigned = form.getlist("assigned_students")
 
     questions = []
@@ -528,6 +685,9 @@ async def edit_exam(
     for s in students:
         s["_id"] = str(s["_id"])
         s.pop("password", None)
+    batches = await database.db.batches.find().to_list(length=50)
+    for b in batches:
+        b["_id"] = str(b["_id"])
 
     if not title or not questions:
         exam = await database.db.exams.find_one({"_id": ObjectId(eid)})
@@ -537,17 +697,31 @@ async def edit_exam(
             s["assigned"] = str(s["_id"]) in assigned_ids
         return templates.TemplateResponse(
             "admin/exam_form.html",
-            {"request": request, "admin": admin_user, "exam": exam, "students": students, "error": "Title and at least one question are required."},
+            {"request": request, "admin": admin_user, "exam": exam, "students": students, "batches": batches, "error": "Title and at least one question are required."},
         )
 
+    if batch_id:
+        batch_students = await database.db.students.find({"batch_id": batch_id}).to_list(length=200)
+        for bs in batch_students:
+            sid = str(bs["_id"])
+            if sid not in assigned:
+                assigned.append(sid)
+
+    update = {
+        "title": title,
+        "description": description,
+        "exam_date": exam_date,
+        "exam_time": exam_time,
+        "questions": questions,
+        "assigned_students": [ObjectId(s) for s in assigned],
+    }
+    if not exam_date:
+        update.pop("exam_date")
+    if not exam_time:
+        update.pop("exam_time")
     await database.db.exams.update_one(
         {"_id": ObjectId(eid)},
-        {"$set": {
-            "title": title,
-            "description": description,
-            "questions": questions,
-            "assigned_students": [ObjectId(s) for s in assigned],
-        }},
+        {"$set": update},
     )
     return RedirectResponse(url="/admin/exams", status_code=303)
 

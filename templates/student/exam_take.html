@@ -1,50 +1,106 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ exam.title }} - LMS</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 min-h-screen">
-    <nav class="bg-white shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="text-xl font-bold text-gray-800">LMS</h1>
-            <div class="flex items-center gap-4">
-                <span class="text-gray-600">{{ student.name }}</span>
-                <a href="/student/exams" class="text-blue-600 text-sm hover:underline">&larr; Back to Exams</a>
-                <a href="/logout" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm hover:bg-red-600 transition">Logout</a>
+{% extends "student_base.html" %}
+{% block title %}{{ exam.title }} - HackWise LMS{% endblock %}
+{% block main %}
+<div class="mb-6 flex items-center justify-between">
+    <div>
+        <a href="/student/exams" class="text-[#A0A0A0] hover:text-[#E50914] text-sm no-underline">&larr; Back to Exams</a>
+        <h1 class="text-3xl font-bold text-white mt-2">{{ exam.title }}</h1>
+    </div>
+</div>
+
+<div id="guidelinesScreen">
+    <div class="card p-8 max-w-2xl mx-auto">
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 rounded-full bg-[rgba(229,9,20,0.1)] flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-[#E50914]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             </div>
+            <h2 class="text-2xl font-bold text-white">Exam Guidelines</h2>
+            <p class="text-[#A0A0A0] mt-1">Please read carefully before proceeding</p>
+            {% if exam.exam_date %}
+            <p class="text-[#A0A0A0] text-sm mt-2">
+                Scheduled: <span class="text-[#E50914]">{{ exam.exam_date }}</span>{% if exam.exam_time %} at <span class="text-[#E50914]">{{ exam.exam_time }}</span>{% endif %}
+            </p>
+            {% endif %}
         </div>
-    </nav>
 
-    <main class="max-w-3xl mx-auto px-4 py-8">
-        <h2 class="text-2xl font-semibold text-gray-800 mb-6">{{ exam.title }}</h2>
-
-        <form method="POST" action="/student/exams/{{ exam._id }}" id="examForm">
-            {% for q in exam.questions %}
-            {% set q_idx = loop.index0 %}
-            <div class="bg-white rounded-lg shadow p-6 mb-4">
-                <h3 class="font-medium text-gray-800 mb-3">Question {{ loop.index }}</h3>
-                <p class="text-gray-700 mb-3">{{ q.q }}</p>
-                <div class="space-y-2">
-                    {% for opt in q.options %}
-                    <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
-                        <input type="radio" name="answer_{{ q_idx }}" value="{{ loop.index0 }}" required
-                            class="text-blue-600 focus:ring-blue-500">
-                        <span class="text-sm text-gray-700">{{ opt }}</span>
-                    </label>
-                    {% endfor %}
+        <div class="space-y-4 mb-8">
+            <div class="flex gap-3 p-4 bg-[#050505] rounded-lg border border-[rgba(255,255,255,0.07)]">
+                <span class="w-7 h-7 rounded-full bg-[rgba(229,9,20,0.1)] text-[#E50914] flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                <div>
+                    <p class="text-white font-medium">Duration</p>
+                    <p class="text-[#A0A0A0] text-sm">The exam is time-bound. Ensure you have enough uninterrupted time before starting.</p>
                 </div>
             </div>
-            {% endfor %}
+            <div class="flex gap-3 p-4 bg-[#050505] rounded-lg border border-[rgba(255,255,255,0.07)]">
+                <span class="w-7 h-7 rounded-full bg-[rgba(229,9,20,0.1)] text-[#E50914] flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                <div>
+                    <p class="text-white font-medium">Single Attempt</p>
+                    <p class="text-[#A0A0A0] text-sm">You can only take this exam once. Make sure you are fully prepared before you begin.</p>
+                </div>
+            </div>
+            <div class="flex gap-3 p-4 bg-[#050505] rounded-lg border border-[rgba(255,255,255,0.07)]">
+                <span class="w-7 h-7 rounded-full bg-[rgba(229,9,20,0.1)] text-[#E50914] flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                <div>
+                    <p class="text-white font-medium">Answer All Questions</p>
+                    <p class="text-[#A0A0A0] text-sm">Each question has one correct answer. Select the best option for each question.</p>
+                </div>
+            </div>
+            <div class="flex gap-3 p-4 bg-[#050505] rounded-lg border border-[rgba(255,255,255,0.07)]">
+                <span class="w-7 h-7 rounded-full bg-[rgba(229,9,20,0.1)] text-[#E50914] flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
+                <div>
+                    <p class="text-white font-medium">No Going Back</p>
+                    <p class="text-[#A0A0A0] text-sm">Once submitted, your answers are final and cannot be changed. Review carefully before submitting.</p>
+                </div>
+            </div>
+            <div class="flex gap-3 p-4 bg-[#050505] rounded-lg border border-[rgba(255,255,255,0.07)]">
+                <span class="w-7 h-7 rounded-full bg-[rgba(229,9,20,0.1)] text-[#E50914] flex items-center justify-center text-sm font-bold flex-shrink-0">5</span>
+                <div>
+                    <p class="text-white font-medium">{{ exam.questions|length }} Questions</p>
+                    <p class="text-[#A0A0A0] text-sm">This exam contains <strong class="text-white">{{ exam.questions|length }}</strong> questions. Answer all of them to complete the exam.</p>
+                </div>
+            </div>
+        </div>
 
-            <button type="submit"
-                class="w-full bg-blue-600 text-white py-3 px-6 rounded-md hover:bg-blue-700 transition font-medium"
-                onclick="return confirm('Submit your answers? This cannot be undone.');">
-                Submit Exam
-            </button>
-        </form>
-    </main>
-</body>
-</html>
+        <label class="flex items-center gap-3 p-4 bg-[#050505] rounded-lg border border-[rgba(255,255,255,0.07)] cursor-pointer mb-6">
+            <input type="checkbox" id="agreeCheck" onchange="document.getElementById('startBtn').disabled = !this.checked"
+                class="w-5 h-5 rounded border-[rgba(255,255,255,0.2)] bg-[#050505] text-[#E50914] focus:ring-[#E50914] focus:ring-offset-0">
+            <span class="text-sm text-[#e2e8f0]">I have read and understand the guidelines. I am ready to begin the exam.</span>
+        </label>
+
+        <button id="startBtn" disabled
+            onclick="document.getElementById('guidelinesScreen').style.display='none'; document.getElementById('examScreen').style.display='block';"
+            class="btn-primary w-full py-3 text-base font-semibold disabled:opacity-40 disabled:cursor-not-allowed">
+            Start Exam
+        </button>
+    </div>
+</div>
+
+<div id="examScreen" style="display:none">
+    <form method="POST" action="/student/exams/{{ exam._id }}" id="examForm" class="space-y-4">
+        {% for q in exam.questions %}
+        {% set q_idx = loop.index0 %}
+        <div class="card p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="w-8 h-8 rounded-full bg-[rgba(229,9,20,0.1)] text-[#E50914] flex items-center justify-center text-sm font-bold">{{ loop.index }}</span>
+                <h3 class="font-medium text-white">Question {{ loop.index }}</h3>
+            </div>
+            <p class="text-[#e2e8f0] mb-4">{{ q.q }}</p>
+            <div class="space-y-2">
+                {% for opt in q.options %}
+                <label class="flex items-center gap-3 p-3 border border-[rgba(255,255,255,0.1)] rounded-lg hover:border-[rgba(229,9,20,0.3)] cursor-pointer transition-colors bg-[#050505]">
+                    <input type="radio" name="answer_{{ q_idx }}" value="{{ loop.index0 }}" required
+                        class="text-[#E50914] focus:ring-[#E50914] bg-[#050505] border-[rgba(255,255,255,0.2)]">
+                    <span class="text-sm text-[#e2e8f0]">{{ opt }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+
+        <button type="submit" class="btn-primary w-full py-3 text-base font-semibold"
+            onclick="return confirm('Submit your answers? This cannot be undone.');">
+            Submit Exam
+        </button>
+    </form>
+</div>
+{% endblock %}
