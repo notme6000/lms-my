@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -6,6 +7,8 @@ import datetime
 
 from app.database import database
 from app.auth import get_student_user
+
+logger = logging.getLogger("lms.student")
 
 router = APIRouter(prefix="/student")
 templates = Jinja2Templates(directory="templates")
@@ -52,18 +55,18 @@ async def dashboard(
         {"assigned_students": ObjectId(student_id)}
     ).to_list(length=10)
     for exam in upcoming:
-        notifications.append(f"📝 Exam \"{exam['title']}\" assigned to you — be prepared!")
+        notifications.append(f"Exam \"{exam['title']}\" assigned to you — be prepared!")
 
     pending = [a for a in assessments if a.get("marks_obtained", 0) == 0]
     if pending:
-        notifications.append(f"📋 You have {len(pending)} pending assessment(s) to complete.")
+        notifications.append(f"You have {len(pending)} pending assessment(s) to complete.")
 
     incomplete = [p for p in projects if p.get("marks_obtained", 0) == 0]
     if incomplete:
-        notifications.append(f"🔧 You have {len(incomplete)} pending project(s) to submit.")
+        notifications.append(f"You have {len(incomplete)} pending project(s) to submit.")
 
     if not notifications:
-        notifications.append("✅ All caught up! No new notifications.")
+        notifications.append("All caught up! No new notifications.")
 
     return templates.TemplateResponse("student/dashboard.html", {
         "request": request,
@@ -120,6 +123,8 @@ async def take_exam(
     eid: str,
     student_user: dict = Depends(get_student_user),
 ):
+    if not ObjectId.is_valid(eid):
+        return RedirectResponse(url="/student/exams", status_code=303)
     oid = ObjectId(student_user["id"])
     exam = await database.db.exams.find_one({"_id": ObjectId(eid)})
     if not exam or oid not in exam.get("assigned_students", []):
@@ -155,6 +160,8 @@ async def submit_exam(
     student_user: dict = Depends(get_student_user),
 ):
     form = await request.form()
+    if not ObjectId.is_valid(eid):
+        return RedirectResponse(url="/student/exams", status_code=303)
     oid = ObjectId(student_user["id"])
     exam = await database.db.exams.find_one({"_id": ObjectId(eid)})
     if not exam or oid not in exam.get("assigned_students", []):
@@ -170,7 +177,7 @@ async def submit_exam(
     total = len(exam["questions"])
     for i, q in enumerate(exam["questions"]):
         answer = form.get(f"answer_{i}", "")
-        if answer and int(answer) == q["correct"]:
+        if answer and answer.isdigit() and int(answer) == q["correct"]:
             score += 1
 
     await database.db.exam_results.insert_one({
@@ -189,6 +196,8 @@ async def exam_result(
     eid: str,
     student_user: dict = Depends(get_student_user),
 ):
+    if not ObjectId.is_valid(eid):
+        return RedirectResponse(url="/student/exams", status_code=303)
     oid = ObjectId(student_user["id"])
     exam = await database.db.exams.find_one({"_id": ObjectId(eid)})
     if not exam:

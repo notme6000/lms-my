@@ -1,3 +1,5 @@
+import logging
+import re
 import secrets
 from bson.objectid import ObjectId
 from fastapi import APIRouter, Request, Depends
@@ -7,6 +9,8 @@ import bcrypt
 
 from app.database import database
 from app.auth import get_admin_user
+
+logger = logging.getLogger("lms.admin")
 
 router = APIRouter(prefix="/admin")
 templates = Jinja2Templates(directory="templates")
@@ -20,6 +24,7 @@ async def _next_student_id():
         num = 1
     return f"S{num:04d}"
 
+
 async def _next_batch_id():
     last = await database.db.batches.find_one({}, sort=[("batch_id", -1)])
     if last and "batch_id" in last:
@@ -27,6 +32,9 @@ async def _next_batch_id():
     else:
         num = 1
     return f"B{num:04d}"
+
+
+EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -111,10 +119,15 @@ async def create_student(
     for b in batches:
         b["_id"] = str(b["_id"])
 
-    if not name or not email:
+    errors = []
+    if not name or len(name) < 2 or len(name) > 100:
+        errors.append("Name must be between 2 and 100 characters.")
+    if not EMAIL_RE.match(email):
+        errors.append("Invalid email address.")
+    if errors:
         return templates.TemplateResponse(
             "admin/create_student.html",
-            {"request": request, "admin": admin_user, "courses": courses, "batches": batches, "error": "Name and email are required."},
+            {"request": request, "admin": admin_user, "courses": courses, "batches": batches, "error": " ".join(errors)},
         )
 
     existing = await database.db.students.find_one({"email": email})
@@ -139,11 +152,12 @@ async def create_student(
     result = await database.db.students.insert_one(student_doc)
 
     for cid in course_ids:
-        await database.db.enrollments.insert_one({
-            "student_id": result.inserted_id,
-            "course_id": ObjectId(cid),
-            "progress": 0,
-        })
+        if ObjectId.is_valid(cid):
+            await database.db.enrollments.insert_one({
+                "student_id": result.inserted_id,
+                "course_id": ObjectId(cid),
+                "progress": 0,
+            })
 
     return templates.TemplateResponse(
         "admin/create_student.html",
@@ -166,6 +180,8 @@ async def delete_student(
     sid: str,
     admin_user: dict = Depends(get_admin_user),
 ):
+    if not ObjectId.is_valid(sid):
+        return RedirectResponse(url="/admin/students", status_code=303)
     oid = ObjectId(sid)
     await database.db.students.delete_one({"_id": oid})
     await database.db.enrollments.delete_many({"student_id": oid})
@@ -180,6 +196,8 @@ async def reset_student_password(
     sid: str,
     admin_user: dict = Depends(get_admin_user),
 ):
+    if not ObjectId.is_valid(sid):
+        return RedirectResponse(url="/admin/students", status_code=303)
     oid = ObjectId(sid)
     student = await database.db.students.find_one({"_id": oid})
     if not student:
@@ -206,6 +224,8 @@ async def student_detail(
     sid: str,
     admin_user: dict = Depends(get_admin_user),
 ):
+    if not ObjectId.is_valid(sid):
+        return RedirectResponse(url="/admin/students", status_code=303)
     oid = ObjectId(sid)
     student = await database.db.students.find_one({"_id": oid})
     if not student:
@@ -250,6 +270,8 @@ async def add_assessment(
     admin_user: dict = Depends(get_admin_user),
 ):
     form = await request.form()
+    if not ObjectId.is_valid(sid):
+        return RedirectResponse(url="/admin/students", status_code=303)
     oid = ObjectId(sid)
     heading = form.get("heading", "").strip()
     description = form.get("description", "").strip()
@@ -260,13 +282,24 @@ async def add_assessment(
     if not heading or not course_id or not total_marks or not marks_obtained:
         return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
 
+    try:
+        tm = int(total_marks)
+        mo = int(marks_obtained)
+        if tm <= 0 or mo < 0 or mo > tm:
+            return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
+    except (ValueError, TypeError):
+        return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
+
+    if not ObjectId.is_valid(course_id):
+        return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
+
     await database.db.assessments.insert_one({
         "student_id": oid,
         "course_id": ObjectId(course_id),
         "heading": heading,
         "description": description,
-        "total_marks": int(total_marks),
-        "marks_obtained": int(marks_obtained),
+        "total_marks": tm,
+        "marks_obtained": mo,
     })
     return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
 
@@ -278,7 +311,8 @@ async def delete_assessment(
     aid: str,
     admin_user: dict = Depends(get_admin_user),
 ):
-    await database.db.assessments.delete_one({"_id": ObjectId(aid)})
+    if ObjectId.is_valid(aid):
+        await database.db.assessments.delete_one({"_id": ObjectId(aid)})
     return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
 
 
@@ -289,6 +323,8 @@ async def add_project(
     admin_user: dict = Depends(get_admin_user),
 ):
     form = await request.form()
+    if not ObjectId.is_valid(sid):
+        return RedirectResponse(url="/admin/students", status_code=303)
     oid = ObjectId(sid)
     heading = form.get("heading", "").strip()
     description = form.get("description", "").strip()
@@ -299,13 +335,24 @@ async def add_project(
     if not heading or not course_id or not total_marks or not marks_obtained:
         return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
 
+    try:
+        tm = int(total_marks)
+        mo = int(marks_obtained)
+        if tm <= 0 or mo < 0 or mo > tm:
+            return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
+    except (ValueError, TypeError):
+        return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
+
+    if not ObjectId.is_valid(course_id):
+        return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
+
     await database.db.projects.insert_one({
         "student_id": oid,
         "course_id": ObjectId(course_id),
         "heading": heading,
         "description": description,
-        "total_marks": int(total_marks),
-        "marks_obtained": int(marks_obtained),
+        "total_marks": tm,
+        "marks_obtained": mo,
     })
     return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
 
@@ -317,7 +364,8 @@ async def delete_project(
     pid: str,
     admin_user: dict = Depends(get_admin_user),
 ):
-    await database.db.projects.delete_one({"_id": ObjectId(pid)})
+    if ObjectId.is_valid(pid):
+        await database.db.projects.delete_one({"_id": ObjectId(pid)})
     return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
 
 
@@ -356,10 +404,10 @@ async def create_batch(
 ):
     form = await request.form()
     name = form.get("name", "").strip()
-    if not name:
+    if not name or len(name) > 200:
         return templates.TemplateResponse(
             "admin/batch_form.html",
-            {"request": request, "admin": admin_user, "batch": None, "error": "Name is required."},
+            {"request": request, "admin": admin_user, "batch": None, "error": "Name is required (max 200 characters)."},
         )
     batch_id = await _next_batch_id()
     await database.db.batches.insert_one({"batch_id": batch_id, "name": name})
@@ -372,6 +420,8 @@ async def edit_batch_page(
     bid: str,
     admin_user: dict = Depends(get_admin_user),
 ):
+    if not ObjectId.is_valid(bid):
+        return RedirectResponse(url="/admin/batches", status_code=303)
     batch = await database.db.batches.find_one({"_id": ObjectId(bid)})
     if not batch:
         return RedirectResponse(url="/admin/batches", status_code=303)
@@ -391,12 +441,13 @@ async def edit_batch(
 ):
     form = await request.form()
     name = form.get("name", "").strip()
-    if not name:
+    if not name or len(name) > 200:
         batch = await database.db.batches.find_one({"_id": ObjectId(bid)})
-        batch["_id"] = str(batch["_id"])
+        if batch:
+            batch["_id"] = str(batch["_id"])
         return templates.TemplateResponse(
             "admin/batch_form.html",
-            {"request": request, "admin": admin_user, "batch": batch, "error": "Name is required."},
+            {"request": request, "admin": admin_user, "batch": batch, "error": "Name is required (max 200 characters)."},
         )
     await database.db.batches.update_one(
         {"_id": ObjectId(bid)},
@@ -411,7 +462,8 @@ async def delete_batch(
     bid: str,
     admin_user: dict = Depends(get_admin_user),
 ):
-    await database.db.batches.delete_one({"_id": ObjectId(bid)})
+    if ObjectId.is_valid(bid):
+        await database.db.batches.delete_one({"_id": ObjectId(bid)})
     return RedirectResponse(url="/admin/batches", status_code=303)
 
 
@@ -451,10 +503,10 @@ async def create_course(
     title = form.get("title", "").strip()
     description = form.get("description", "").strip()
 
-    if not title:
+    if not title or len(title) < 2 or len(title) > 200:
         return templates.TemplateResponse(
             "admin/course_form.html",
-            {"request": request, "admin": admin_user, "course": None, "error": "Title is required."},
+            {"request": request, "admin": admin_user, "course": None, "error": "Title must be between 2 and 200 characters."},
         )
 
     await database.db.courses.insert_one({"title": title, "description": description})
@@ -467,6 +519,8 @@ async def edit_course_page(
     cid: str,
     admin_user: dict = Depends(get_admin_user),
 ):
+    if not ObjectId.is_valid(cid):
+        return RedirectResponse(url="/admin/courses", status_code=303)
     course = await database.db.courses.find_one({"_id": ObjectId(cid)})
     if not course:
         return RedirectResponse(url="/admin/courses", status_code=303)
@@ -488,12 +542,13 @@ async def edit_course(
     title = form.get("title", "").strip()
     description = form.get("description", "").strip()
 
-    if not title:
+    if not title or len(title) < 2 or len(title) > 200:
         course = await database.db.courses.find_one({"_id": ObjectId(cid)})
-        course["_id"] = str(course["_id"])
+        if course:
+            course["_id"] = str(course["_id"])
         return templates.TemplateResponse(
             "admin/course_form.html",
-            {"request": request, "admin": admin_user, "course": course, "error": "Title is required."},
+            {"request": request, "admin": admin_user, "course": course, "error": "Title must be between 2 and 200 characters."},
         )
 
     await database.db.courses.update_one(
@@ -509,6 +564,8 @@ async def delete_course(
     cid: str,
     admin_user: dict = Depends(get_admin_user),
 ):
+    if not ObjectId.is_valid(cid):
+        return RedirectResponse(url="/admin/courses", status_code=303)
     oid = ObjectId(cid)
     await database.db.enrollments.delete_many({"course_id": oid})
     await database.db.assessments.delete_many({"course_id": oid})
@@ -592,10 +649,16 @@ async def create_exam(
     for b in batches:
         b["_id"] = str(b["_id"])
 
-    if not title or not questions:
+    if not title or len(title) > 200:
         return templates.TemplateResponse(
             "admin/exam_form.html",
-            {"request": request, "admin": admin_user, "exam": None, "students": students, "batches": batches, "error": "Title and at least one question are required."},
+            {"request": request, "admin": admin_user, "exam": None, "students": students, "batches": batches, "error": "Title is required (max 200 characters)."},
+        )
+
+    if not questions:
+        return templates.TemplateResponse(
+            "admin/exam_form.html",
+            {"request": request, "admin": admin_user, "exam": None, "students": students, "batches": batches, "error": "At least one question is required."},
         )
 
     if batch_id:
@@ -605,13 +668,18 @@ async def create_exam(
             if sid not in assigned:
                 assigned.append(sid)
 
+    assigned_ids = []
+    for s in assigned:
+        if ObjectId.is_valid(s):
+            assigned_ids.append(ObjectId(s))
+
     doc = {
         "title": title,
         "description": description,
         "exam_date": exam_date,
         "exam_time": exam_time,
         "questions": questions,
-        "assigned_students": [ObjectId(s) for s in assigned],
+        "assigned_students": assigned_ids,
     }
     if not exam_date:
         doc.pop("exam_date")
@@ -627,6 +695,8 @@ async def edit_exam_page(
     eid: str,
     admin_user: dict = Depends(get_admin_user),
 ):
+    if not ObjectId.is_valid(eid):
+        return RedirectResponse(url="/admin/exams", status_code=303)
     exam = await database.db.exams.find_one({"_id": ObjectId(eid)})
     if not exam:
         return RedirectResponse(url="/admin/exams", status_code=303)
@@ -689,15 +759,28 @@ async def edit_exam(
     for b in batches:
         b["_id"] = str(b["_id"])
 
-    if not title or not questions:
+    if not title or len(title) > 200:
         exam = await database.db.exams.find_one({"_id": ObjectId(eid)})
-        exam["_id"] = str(exam["_id"])
-        assigned_ids = [str(s) for s in exam.get("assigned_students", [])]
-        for s in students:
-            s["assigned"] = str(s["_id"]) in assigned_ids
+        if exam:
+            exam["_id"] = str(exam["_id"])
+            assigned_ids = [str(s) for s in exam.get("assigned_students", [])]
+            for s in students:
+                s["assigned"] = str(s["_id"]) in assigned_ids
         return templates.TemplateResponse(
             "admin/exam_form.html",
-            {"request": request, "admin": admin_user, "exam": exam, "students": students, "batches": batches, "error": "Title and at least one question are required."},
+            {"request": request, "admin": admin_user, "exam": exam, "students": students, "batches": batches, "error": "Title is required (max 200 characters)."},
+        )
+
+    if not questions:
+        exam = await database.db.exams.find_one({"_id": ObjectId(eid)})
+        if exam:
+            exam["_id"] = str(exam["_id"])
+            assigned_ids = [str(s) for s in exam.get("assigned_students", [])]
+            for s in students:
+                s["assigned"] = str(s["_id"]) in assigned_ids
+        return templates.TemplateResponse(
+            "admin/exam_form.html",
+            {"request": request, "admin": admin_user, "exam": exam, "students": students, "batches": batches, "error": "At least one question is required."},
         )
 
     if batch_id:
@@ -707,13 +790,18 @@ async def edit_exam(
             if sid not in assigned:
                 assigned.append(sid)
 
+    assigned_ids = []
+    for s in assigned:
+        if ObjectId.is_valid(s):
+            assigned_ids.append(ObjectId(s))
+
     update = {
         "title": title,
         "description": description,
         "exam_date": exam_date,
         "exam_time": exam_time,
         "questions": questions,
-        "assigned_students": [ObjectId(s) for s in assigned],
+        "assigned_students": assigned_ids,
     }
     if not exam_date:
         update.pop("exam_date")
@@ -732,6 +820,8 @@ async def delete_exam(
     eid: str,
     admin_user: dict = Depends(get_admin_user),
 ):
+    if not ObjectId.is_valid(eid):
+        return RedirectResponse(url="/admin/exams", status_code=303)
     oid = ObjectId(eid)
     await database.db.exam_results.delete_many({"exam_id": oid})
     await database.db.exams.delete_one({"_id": oid})
@@ -744,6 +834,8 @@ async def exam_results(
     eid: str,
     admin_user: dict = Depends(get_admin_user),
 ):
+    if not ObjectId.is_valid(eid):
+        return RedirectResponse(url="/admin/exams", status_code=303)
     exam = await database.db.exams.find_one({"_id": ObjectId(eid)})
     if not exam:
         return RedirectResponse(url="/admin/exams", status_code=303)

@@ -16,8 +16,10 @@ def serialize(doc):
 
 
 async def export():
-    client = AsyncIOMotorClient("mongodb://localhost:27017")
-    db = client.lms_db
+    uri = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+    db_name = os.getenv("MONGODB_DB_NAME", "lms_db")
+    client = AsyncIOMotorClient(uri)
+    db = client[db_name]
     os.makedirs(OUT, exist_ok=True)
     for name in COLLECTIONS:
         docs = await db[name].find().to_list(length=None)

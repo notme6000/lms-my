@@ -1,1 +1,5 @@
 env/
+.env
+db_export/
+__pycache__/
+*.pyc

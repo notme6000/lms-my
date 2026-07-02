@@ -17,8 +17,10 @@ def restore_objid(obj):
 
 
 async def restore():
-    client = AsyncIOMotorClient("mongodb://localhost:27017")
-    db = client.lms_db
+    uri = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+    db_name = os.getenv("MONGODB_DB_NAME", "lms_db")
+    client = AsyncIOMotorClient(uri)
+    db = client[db_name]
 
     for name in COLLECTIONS:
         path = os.path.join(SRC, f"{name}.json")
