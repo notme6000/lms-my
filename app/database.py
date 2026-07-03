@@ -3,7 +3,9 @@ import os
 import secrets
 from motor.motor_asyncio import AsyncIOMotorClient
 import bcrypt
+from dotenv import load_dotenv
 
+load_dotenv()
 logger = logging.getLogger("lms.database")
 
 

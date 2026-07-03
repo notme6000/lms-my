@@ -2,6 +2,7 @@ import logging
 import os
 import time
 from collections import defaultdict
+from dotenv import load_dotenv
 
 from bson.objectid import ObjectId
 from fastapi import FastAPI, Request, Depends, HTTPException
@@ -16,6 +17,8 @@ import bcrypt
 from app.database import database
 from app.auth import get_authenticated_user
 from app.routes import admin, student
+
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
