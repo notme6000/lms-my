@@ -45,7 +45,7 @@ app.add_middleware(
     max_age=86400,
 )
 
-allowed_hosts = os.getenv("ALLOWED_HOSTS", "https://lms-my.onrender.com")
+allowed_hosts = os.getenv("ALLOWED_HOSTS", "*")
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=[h.strip() for h in allowed_hosts.split(",")],
