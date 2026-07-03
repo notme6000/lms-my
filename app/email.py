@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import smtplib
@@ -23,6 +24,22 @@ def is_configured() -> bool:
     return bool(host and username and password)
 
 
+def _send_smtp_sync(host, port, username, password, from_email, from_name, to, subject, html_body):
+    msg = MIMEMultipart("alternative")
+    msg["From"] = f"{from_name} <{from_email}>"
+    msg["To"] = to
+    msg["Subject"] = subject
+    msg.attach(MIMEText(html_body, "html"))
+
+    context = ssl.create_default_context()
+    with smtplib.SMTP(host, port) as server:
+        server.ehlo()
+        server.starttls(context=context)
+        server.ehlo()
+        server.login(username, password)
+        server.sendmail(from_email, to, msg.as_string())
+
+
 async def send_email(to: str, subject: str, html_body: str) -> bool:
     host, port, username, password, from_email, from_name = _get_smtp_config()
 
@@ -30,20 +47,12 @@ async def send_email(to: str, subject: str, html_body: str) -> bool:
         logger.warning("SMTP not configured. Email not sent to %s", to)
         return False
 
-    msg = MIMEMultipart("alternative")
-    msg["From"] = f"{from_name} <{from_email}>"
-    msg["To"] = to
-    msg["Subject"] = subject
-    msg.attach(MIMEText(html_body, "html"))
-
+    loop = asyncio.get_event_loop()
     try:
-        context = ssl.create_default_context()
-        with smtplib.SMTP(host, port) as server:
-            server.ehlo()
-            server.starttls(context=context)
-            server.ehlo()
-            server.login(username, password)
-            server.sendmail(from_email, to, msg.as_string())
+        await loop.run_in_executor(
+            None, _send_smtp_sync, host, port, username, password,
+            from_email, from_name, to, subject, html_body,
+        )
         logger.info("Email sent to %s", to)
         return True
     except smtplib.SMTPAuthenticationError:

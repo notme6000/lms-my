@@ -4,29 +4,25 @@
 
 ```bash
 # MongoDB must be running on localhost:27017
-cd /home/akira/projects/lms
 env/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-## Critical gotchas
+## Critical Gotchas
+- **Motor Version**: Always use `motor>=3.7` (present in `env/`). `requirements.txt` may list an incompatible version.
+- **No Tests**: Zero test files exist. Verification relies on running linters/typecheckers or manual inspection.
+- **Static Directory**: `/static/` must exist (even if empty) or FastAPI crashes on startup (`main.py:19`).
+- **Auth Redirects**: Use `HTTPException(status_code=303, headers={"Location": "/login"})`, not `RedirectResponse`.
+- **Login Fields**: Single field `username` is used for both admin (username) and student (email) lookups.
+- **Session Shape**: `request.session["user"]` is `{"username", "role": "admin"}` or `{"id", "name", "role": "student"}`.
+- **DB I/O**: Pydantic models in `models.py` are not used for DB I/O; all operations use raw dicts via Motor.
 
-- **motor version**: `requirements.txt` pins `motor==3.3.1` but this is incompatible with installed `pymongo==4.17` (`_QUERY_OPTIONS` removed). Always install `motor>=3.7` instead. The `env/` venv already has `motor==3.7.1`.
-- **No tests**: zero test files, no test framework. Do not assume pytest or any test runner exists.
-- **`static/` directory must exist** — `main.py:19` mounts it and crashes if absent. Keep an empty `static/` dir.
-- **Auth redirects**: `auth.py` raises `HTTPException(status_code=303, headers={"Location": "/login"})`. Not a `RedirectResponse`. Login POST also uses `status_code=303`.
-- **Login flow**: single field `username` — checks `admins` by `username`, then `students` by `email`. No separate role/type selector.
-- **Session shape**: `request.session["user"]` is `{"username", "role": "admin"}` or `{"id", "name", "role": "student"}`.
-- **Pydantic models unused**: `models.py` schemas exist but are not used for DB I/O. All DB ops use raw dicts via Motor.
+## Architecture & Data Model
+- **DB Singleton**: `database.py:45` provides a module-level singleton `Database()` instance. Call `database.connect()` on startup.
+- **Seeding**: DB auto-seeds on first startup (`_seed()`). Data persists; **never drop the database**.
+- **Motor Usage**: All DB ops use raw Motor methods (`find`, `insert_one`, etc.); no ODM layer.
+- **Collections**: Key collections include `assessments` and `projects`, structured around `student_id`, `course_id`, `total_marks`, and `marks_obtained`.
+- **Student IDs**: Sequential (`S0001`, ...) generated via `admin.py:_next_student_id()`. Deleting a student cascades to remove enrollments, assessments, and projects.
 
-## Architecture
-
-- **Singleton DB**: `database.py:45` creates a module-level `Database()` instance imported by routes. Call `database.connect()` once on startup.
-- **Auto-seed**: On first startup, `_seed()` inserts admin (`admin/admin123`), 3 courses, 1 student (`john@example.com`/`student123`), 3 enrollments, 1 exam.
-- **Raw Motor queries**: No ODM. `find()`, `find_one()`, `insert_one()`, `count_documents()`. Pydantic not used for I/O.
-- **`venv at `env/`**: gitignored, already has all deps. Not in requirements.txt.
-- **`opencode.json`** at root references `.opencode/codebase-index.md` via `instructions`.
-- **Collections**: `assessments` and `projects` — each has `student_id`, `course_id`, `heading`, `description`, `total_marks`, `marks_obtained`.
-- **Exams**: `exams` collection has `title`, `description`, `questions` (array of `{q, options[4], correct}`), and `assigned_students` (array of ObjectId). `exam_results` stores `exam_id`, `student_id`, `score`, `total`.
-- **Student ID**: sequential `S0001`, `S0002`, ... generated in `admin.py:_next_student_id()`.
-- **Delete cascades**: Deleting a student also removes their enrollments, assessments, and projects.
-- **Never drop the database**: The seed function only writes on empty collections, so data survives restarts. Do not call `dropDatabase()` in tests — it destroys user data.
+## Demo Credentials
+- **Admin**: username `admin`, password `admin123`
+- **Student**: email `john@example.com`, password `student123`
