@@ -14,12 +14,14 @@
 {% if success %}
 <div class="bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.2)] rounded-lg p-6 mb-6">
     <p class="text-[#10b981] font-medium mb-3">{{ success }}</p>
+    {% if generated_password %}
     <div class="space-y-1 text-sm text-[#A0A0A0] font-mono">
         <p>Student ID: <span class="text-white font-medium">{{ generated_student_id }}</span></p>
         <p>Email: <span class="text-white font-medium">{{ generated_email }}</span></p>
         <p>Password: <span class="text-white font-medium">{{ generated_password }}</span></p>
     </div>
     <p class="text-[#A0A0A0] text-xs mt-3">The student will be required to change this password on first login.</p>
+    {% endif %}
 </div>
 {% endif %}
 

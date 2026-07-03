@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import secrets
 from bson.objectid import ObjectId
@@ -9,6 +10,7 @@ import bcrypt
 
 from app.database import database
 from app.auth import get_admin_user
+from app.email import is_configured, send_email, build_welcome_email, build_reset_email
 
 logger = logging.getLogger("lms.admin")
 
@@ -159,6 +161,17 @@ async def create_student(
                 "progress": 0,
             })
 
+    app_url = os.getenv("APP_URL", "http://localhost:8000")
+    email_sent = False
+    if is_configured():
+        html = build_welcome_email(name, student_id, email, password, app_url)
+        email_sent = await send_email(email, "Your LMS Account", html)
+
+    if email_sent:
+        success = f"Student {name} created. Credentials sent to {email}."
+    else:
+        success = "Student created! Share these credentials:"
+
     return templates.TemplateResponse(
         "admin/create_student.html",
         {
@@ -166,10 +179,10 @@ async def create_student(
             "admin": admin_user,
             "courses": courses,
             "batches": batches,
-            "success": "Student created! Share these credentials:",
-            "generated_student_id": student_id,
-            "generated_email": email,
-            "generated_password": password,
+            "success": success,
+            "generated_student_id": student_id if not email_sent else None,
+            "generated_email": email if not email_sent else None,
+            "generated_password": password if not email_sent else None,
         },
     )
 
@@ -210,12 +223,24 @@ async def reset_student_password(
         {"$set": {"password": hashed, "must_change_password": True}},
     )
 
-    return templates.TemplateResponse("admin/reset_password.html", {
-        "request": request,
-        "admin": admin_user,
-        "student": {"_id": sid, "name": student["name"], "email": student["email"], "student_id": student.get("student_id", "")},
-        "generated_password": password,
-    })
+    app_url = os.getenv("APP_URL", "http://localhost:8000")
+    name = student["name"]
+    email = student["email"]
+    student_id = student.get("student_id", "")
+    email_sent = False
+    if is_configured():
+        html = build_reset_email(name, email, password, app_url)
+        email_sent = await send_email(email, "Your Password Has Been Reset", html)
+
+    if email_sent:
+        return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
+    else:
+        return templates.TemplateResponse("admin/reset_password.html", {
+            "request": request,
+            "admin": admin_user,
+            "student": {"_id": sid, "name": name, "email": email, "student_id": student_id},
+            "generated_password": password,
+        })
 
 
 @router.get("/students/{sid}", response_class=HTMLResponse)
