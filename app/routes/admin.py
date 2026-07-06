@@ -1,16 +1,18 @@
+import csv
+import io
 import logging
-import os
 import re
 import secrets
+import urllib.parse
 from bson.objectid import ObjectId
 from fastapi import APIRouter, Request, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 import bcrypt
+import openpyxl
 
 from app.database import database
 from app.auth import get_admin_user
-from app.email import is_configured, send_email, build_welcome_email, build_reset_email
 
 logger = logging.getLogger("lms.admin")
 
@@ -95,11 +97,13 @@ async def create_student_page(
     batches = await database.db.batches.find().to_list(length=50)
     for b in batches:
         b["_id"] = str(b["_id"])
+    bulk_error = request.query_params.get("bulk_error", "")
     return templates.TemplateResponse("admin/create_student.html", {
         "request": request,
         "admin": admin_user,
         "courses": courses,
         "batches": batches,
+        "bulk_error": bulk_error,
     })
 
 
@@ -129,14 +133,14 @@ async def create_student(
     if errors:
         return templates.TemplateResponse(
             "admin/create_student.html",
-            {"request": request, "admin": admin_user, "courses": courses, "batches": batches, "error": " ".join(errors)},
+            {"request": request, "admin": admin_user, "courses": courses, "batches": batches, "error": " ".join(errors), "bulk_error": ""},
         )
 
     existing = await database.db.students.find_one({"email": email})
     if existing:
         return templates.TemplateResponse(
             "admin/create_student.html",
-            {"request": request, "admin": admin_user, "courses": courses, "batches": batches, "error": "A student with this email already exists."},
+            {"request": request, "admin": admin_user, "courses": courses, "batches": batches, "error": "A student with this email already exists.", "bulk_error": ""},
         )
 
     student_id = await _next_student_id()
@@ -161,17 +165,6 @@ async def create_student(
                 "progress": 0,
             })
 
-    app_url = os.getenv("APP_URL", "http://localhost:8000")
-    email_sent = False
-    if is_configured():
-        html = build_welcome_email(name, student_id, email, password, app_url)
-        email_sent = await send_email(email, "Your LMS Account", html)
-
-    if email_sent:
-        success = f"Student {name} created. Credentials sent to {email}."
-    else:
-        success = "Student created! Share these credentials:"
-
     return templates.TemplateResponse(
         "admin/create_student.html",
         {
@@ -179,12 +172,101 @@ async def create_student(
             "admin": admin_user,
             "courses": courses,
             "batches": batches,
-            "success": success,
-            "generated_student_id": student_id if not email_sent else None,
-            "generated_email": email if not email_sent else None,
-            "generated_password": password if not email_sent else None,
+            "success": "Student created! Share these credentials:",
+            "generated_student_id": student_id,
+            "generated_email": email,
+            "generated_password": password,
+            "bulk_error": "",
         },
     )
+
+
+@router.post("/students/bulk-upload")
+async def bulk_create_students(
+    request: Request,
+    admin_user: dict = Depends(get_admin_user),
+):
+    form = await request.form()
+    upload = form.get("file")
+
+    if not upload or not hasattr(upload, "filename") or not upload.filename:
+        return RedirectResponse(url="/admin/students/create?bulk_error=No+file+uploaded", status_code=303)
+
+    contents = await upload.read()
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(contents))
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+    except Exception:
+        return RedirectResponse(url="/admin/students/create?bulk_error=Invalid+Excel+file", status_code=303)
+
+    if len(rows) < 2:
+        return RedirectResponse(url="/admin/students/create?bulk_error=Excel+file+is+empty", status_code=303)
+
+    errors = []
+    to_create = []
+
+    for i, row in enumerate(rows[1:], start=2):
+        name = str(row[0]).strip() if row[0] else ""
+        email = str(row[1]).strip().lower() if row[1] else ""
+        batch_id = str(row[2]).strip() if len(row) > 2 and row[2] else ""
+
+        if not name or len(name) < 2 or len(name) > 100:
+            errors.append(f"Row {i}: Name must be between 2 and 100 characters.")
+            continue
+        if not EMAIL_RE.match(email):
+            errors.append(f"Row {i}: Invalid email '{email}'.")
+            continue
+
+        existing = await database.db.students.find_one({"email": email})
+        if existing:
+            errors.append(f"Row {i}: Email '{email}' already exists.")
+            continue
+
+        to_create.append((name, email, batch_id))
+
+    if not to_create:
+        msg = "No valid students to create."
+        if errors:
+            msg += " " + " | ".join(errors[:5])
+            if len(errors) > 5:
+                msg += f" (and {len(errors) - 5} more)"
+        encoded = urllib.parse.quote(msg)
+        return RedirectResponse(url=f"/admin/students/create?bulk_error={encoded}", status_code=303)
+
+    last = await database.db.students.find_one({}, sort=[("student_id", -1)])
+    last_num = int(last["student_id"][1:]) if last and "student_id" in last else 0
+
+    created = []
+    for idx, (name, email, batch_id) in enumerate(to_create):
+        student_id = f"S{last_num + 1 + idx:04d}"
+        password = secrets.token_urlsafe(12)
+        hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        doc = {
+            "student_id": student_id,
+            "name": name,
+            "email": email,
+            "password": hashed,
+            "must_change_password": True,
+        }
+        if batch_id:
+            doc["batch_id"] = batch_id
+        await database.db.students.insert_one(doc)
+        created.append((name, email, password))
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Name", "Email", "Password"])
+    writer.writerows(created)
+
+    if errors:
+        output.write(f"# Skipped ({len(errors)}): ")
+        for e in errors:
+            output.write(f"{e} ")
+
+    response = StreamingResponse(iter([output.getvalue()]), media_type="text/csv")
+    response.headers["Content-Disposition"] = f"attachment; filename=student_credentials_{len(created)}_created.csv"
+    return response
 
 
 @router.post("/students/{sid}/delete", response_class=HTMLResponse)
@@ -223,24 +305,32 @@ async def reset_student_password(
         {"$set": {"password": hashed, "must_change_password": True}},
     )
 
-    app_url = os.getenv("APP_URL", "http://localhost:8000")
     name = student["name"]
     email = student["email"]
     student_id = student.get("student_id", "")
-    email_sent = False
-    if is_configured():
-        html = build_reset_email(name, email, password, app_url)
-        email_sent = await send_email(email, "Your Password Has Been Reset", html)
+    return templates.TemplateResponse("admin/reset_password.html", {
+        "request": request,
+        "admin": admin_user,
+        "student": {"_id": sid, "name": name, "email": email, "student_id": student_id},
+        "generated_password": password,
+    })
 
-    if email_sent:
-        return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
+
+@router.post("/students/{sid}/update-batch", response_class=HTMLResponse)
+async def update_student_batch(
+    request: Request,
+    sid: str,
+    admin_user: dict = Depends(get_admin_user),
+):
+    if not ObjectId.is_valid(sid):
+        return RedirectResponse(url="/admin/students", status_code=303)
+    form = await request.form()
+    batch_id = form.get("batch_id", "").strip()
+    if batch_id:
+        await database.db.students.update_one({"_id": ObjectId(sid)}, {"$set": {"batch_id": batch_id}})
     else:
-        return templates.TemplateResponse("admin/reset_password.html", {
-            "request": request,
-            "admin": admin_user,
-            "student": {"_id": sid, "name": name, "email": email, "student_id": student_id},
-            "generated_password": password,
-        })
+        await database.db.students.update_one({"_id": ObjectId(sid)}, {"$unset": {"batch_id": ""}})
+    return RedirectResponse(url=f"/admin/students/{sid}", status_code=303)
 
 
 @router.get("/students/{sid}", response_class=HTMLResponse)
@@ -278,6 +368,10 @@ async def student_detail(
         course = await database.db.courses.find_one({"_id": p["course_id"]})
         p["course_title"] = course["title"] if course else "Unknown"
 
+    batches = await database.db.batches.find().to_list(length=50)
+    for b in batches:
+        b["_id"] = str(b["_id"])
+
     return templates.TemplateResponse("admin/student_detail.html", {
         "request": request,
         "admin": admin_user,
@@ -285,6 +379,7 @@ async def student_detail(
         "courses": courses,
         "assessments": assessments,
         "projects": projects,
+        "batches": batches,
     })
 
 

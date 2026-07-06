@@ -11,6 +11,10 @@
 <div class="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] px-4 py-3 rounded-lg mb-6 text-sm">{{ error }}</div>
 {% endif %}
 
+{% if bulk_error %}
+<div class="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] text-[#ef4444] px-4 py-3 rounded-lg mb-6 text-sm">{{ bulk_error }}</div>
+{% endif %}
+
 {% if success %}
 <div class="bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.2)] rounded-lg p-6 mb-6">
     <p class="text-[#10b981] font-medium mb-3">{{ success }}</p>
@@ -58,6 +62,24 @@
             <p class="text-xs text-[#A0A0A0] mt-1">Select the courses this student is enrolled in.</p>
         </div>
         <button type="submit" class="btn-primary w-full py-2.5">Create Student</button>
+    </form>
+</div>
+
+<hr class="my-8 border-[rgba(255,255,255,0.1)]">
+
+<h2 class="text-xl font-bold text-white mb-4">Bulk Upload Students</h2>
+
+<div class="card p-6 max-w-lg">
+    <p class="text-sm text-[#A0A0A0] mb-4">
+        Upload an Excel file (<code>.xlsx</code>) with the following columns:
+        <strong>Name</strong>, <strong>Email</strong>, <strong>Batch ID</strong> (optional).
+        A CSV file with credentials will be downloaded automatically.
+    </p>
+    <form method="POST" action="/admin/students/bulk-upload" enctype="multipart/form-data" class="space-y-4">
+        <div>
+            <input type="file" name="file" accept=".xlsx" required class="input-field">
+        </div>
+        <button type="submit" class="btn-primary w-full py-2.5">Upload & Create Students</button>
     </form>
 </div>
 {% endblock %}
